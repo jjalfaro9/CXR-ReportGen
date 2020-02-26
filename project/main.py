@@ -41,8 +41,8 @@ if __name__ == '__main__':
     print(f"ARGUMENTS: {args}\n")
     print(f"TRAIN PARAMS: {train_params}\n")
 
-    train_dataset = MSRCDataset('../data/', 'Train')
-    val_dataset = MSRCDataset('../data/', 'Validation')
+    train_dataset = CXRDataset('../data/', 'Train')
+    val_dataset = CXRDataset('../data/', 'Validation')
 
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'], shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=train_params['batch_size'], shuffle=True)
