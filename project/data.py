@@ -17,7 +17,7 @@ import pickle
 
 
 class CXRDataset(Dataset):
-    def __init__(self, dataset_path, split, transform=[Resize((394, 256)), ToTensor()]):
+    def __init__(self, dataset_path, split, transform=[Resize((394, 300)), ToTensor()]):
         self.files = []
         self.transform = transform
 
@@ -91,13 +91,6 @@ class CXRDataset(Dataset):
         return (img, target, num_sentences, longest_sentence_length)
 
 def collate_fn(data):
-    """
-    :param data: list of tuple (image, target, image_id)
-    :return:
-        images: (batch_size, 3, 224, 224)
-        targets: (batch_size, 6, 50)
-        lengths: (batch_size, s_max)
-    """
     pre_images, pre_captions, num_sentences, longest_sentence_length = zip(*data)
     
     # remove empty image-caption pairs
