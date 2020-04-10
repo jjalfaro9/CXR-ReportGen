@@ -94,7 +94,7 @@ if __name__ == '__main__':
     print(skipped)
     print(len(files))
 
-    # print(idxr.objs_to_ints.keys())
+    print(len(idxr.objs_to_ints))
 
     pickle.dump(idxr.objs_to_ints, open('sample_idxr-obj', 'wb'))  
    
