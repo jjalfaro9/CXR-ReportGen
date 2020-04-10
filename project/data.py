@@ -75,7 +75,6 @@ class CXRDataset(Dataset):
                     longest_sentence_length = len(tokens)
                 target.append(tokens)
 
-            # return (img, target)
         except ValueError:
             pass
             # if 'FINDINGS' in file_read:
@@ -101,6 +100,7 @@ def collate_fn(data):
         if len(cap) > 0:
             images.append(pre_images[i])
             captions.append(pre_captions[i])
+    num_sentences = [len(cap) for cap in captions]
 
     try:
         images = torch.stack(images, 0)
@@ -111,31 +111,36 @@ def collate_fn(data):
     max_word_num = max(longest_sentence_length)
 
     targets = np.zeros((len(captions), max_sentence_num, max_word_num))
+    word_lengths = np.zeros((len(captions), max_sentence_num))
     prob = np.zeros((len(captions), max_sentence_num))
 
     for i, caption in enumerate(captions):
         for j, sentence in enumerate(caption):
             targets[i, j, :len(sentence)] = sentence[:]
+            word_lengths[i, j] = len(sentence)
             prob[i, j] = 1
 
     targets = torch.Tensor(targets).long()
     prob = torch.Tensor(prob)
 
-    return images, targets, prob
+    return images, targets, num_sentences, word_lengths, prob
         
 
-# train_dataset = CXRDataset('../data/', 'Train')
-# train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
+def main():
+    train_dataset = CXRDataset('../data/', 'Train')
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
 
-# skip = 0
-# for batch_idx, (images, target, prob) in enumerate(train_loader):
-#     print("TARGET", target.shape)
-#     try:
-#         if target.shape[0] == 0:
-#             skip += 1
-#     except IndexError:
-#         print("\nDESCRIPTION:", description)
+    skip = 0
+    for batch_idx, (images, targets, num_sentences, word_lengths, prob) in enumerate(train_loader):
+        print("TARGET", targets.shape, num_sentences, word_lengths)
+        try:
+            if targets.shape[0] == 0:
+                skip += 1
+        except IndexError:
+            print("\nDESCRIPTION:", description)
 
-# print(skip)
-# print(len(train_dataset))
+    print(skip)
+    print(len(train_dataset))
+
+# main()
 
