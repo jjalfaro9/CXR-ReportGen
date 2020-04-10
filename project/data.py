@@ -88,17 +88,17 @@ class CXRDataset(Dataset):
 
         
 
-train_dataset = CXRDataset('../data/', 'Train')
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+# train_dataset = CXRDataset('../data/', 'Train')
+# train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
-skip = 0
-for batch_idx, (_, description) in tqdm(enumerate(train_loader)):
-    try:
-        if description[0] == 'skip':
-            skip += 1
-    except IndexError:
-        print("\nDESCRIPTION:", description)
+# skip = 0
+# for batch_idx, (_, description) in tqdm(enumerate(train_loader)):
+#     try:
+#         if description[0] == 'skip':
+#             skip += 1
+#     except IndexError:
+#         print("\nDESCRIPTION:", description)
 
-print(skip)
-print(len(train_dataset))
+# print(skip)
+# print(len(train_dataset))
 

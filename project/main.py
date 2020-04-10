@@ -34,7 +34,7 @@ if __name__ == '__main__':
     train_params = {
         'epochs': args.epochs,
         'lr': args.lr,
-        'batch_size': 64,
+        'batch_size': 1,
         'validate': True
     }
 

@@ -1,9 +1,4 @@
 import re
-# report_path = '../png_files_sample/label/ac4deb55-ad246e57-296a8913-199ddddd-d2bd36e5.txt'
-# report_path = '../png_files_sample/label/36b83bff-e122758c-f15e4e2f-cef828f1-49fe71d3.txt'
-# report_path = '../png_files_sample/label/33e3bf71-dd7b1051-4c59b9d9-20e03c40-445bc0f2.txt'
-report_path = '../png_files_sample/label/a4d407bd-1d403175-4282009e-fc8fafe9-fa2e6a26.txt'
-report_path = '../png_files_sample/label/51ac2649-91c90218-a98a22a8-42e71e3a-90471e6d.txt'
 
 names = ['ac4deb55-ad246e57-296a8913-199ddddd-d2bd36e5', '36b83bff-e122758c-f15e4e2f-cef828f1-49fe71d3', '33e3bf71-dd7b1051-4c59b9d9-20e03c40-445bc0f2', 'a4d407bd-1d403175-4282009e-fc8fafe9-fa2e6a26', '51ac2649-91c90218-a98a22a8-42e71e3a-90471e6d']
 
