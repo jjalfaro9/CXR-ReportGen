@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from torch.nn import init
 
 """
 Optional: Your code here
 """
 
 class ImageEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, embedd_size, hidden_size):
         super(ImageEncoder, self).__init__()
         densenet121 = models.densenet121(pretrained=True, progress=True)
         # d121 drops the last layer of densenet121,
@@ -17,15 +18,36 @@ class ImageEncoder(nn.Module):
             *list(densenet121.features.children())[:-1]
         )
 
+        self.avgpool = nn.AvgPool2d(8)
+        self.dropout = nn.Dropout(0.5)
+
+        self.affine_a = nn.Linear(1024, hidden_size)
+        self.affine_b = nn.Linear(1024, embedd_size)
+
+        self.init_weights()
+
+    def init_weights(self):
+        init.kaiming_uniform_(self.affine_a.weight, mode='fan_in')
+        init.kaiming_uniform_(self.affine_b.weight, mode='fan_in')
+        self.affine_a.bias.data.fill_(0)
+        self.affine_b.bias.data.fill_(0)
+
     def forward(self, x):
-        features = self.d121(x)
+        A = self.d121(x) # dim size of 8 x 8 x 1024
+
         # need to project to an word embedding of dimensionality d
             # Appendix A: d = 256 with dropout of p = 0.5
         # compute mean visual features by averaging all local visual features
 
+        a_g = self.avgpool(A)
+        a_g = a_g.view(a_g.size(0), -1)
+        V = A.view(A.size(0), A.size(1), -1).transpose(1,2)
+        V = F.relu(self.affine_a(self.dropout(V)))
+
+        v_g = F.relu(self.affine_b(self.dropout(a_g)))
         # view position embeddings (one-hot vector) are concatenated with image embedding to form input to later decoders
         # TODO: does this concatenation happen here or has already been reflected in the input (x) to forward
-        return features
+        return V, v_g
 
 class SentenceDecoder(nn.Module):
     def __init__(self, topic_dim, hidden_dim, img_feature_dim):
@@ -51,42 +73,73 @@ class SentenceDecoder(nn.Module):
         u = self.stop(h)
         return u, t, c
 
-
 class WordDecoder(nn.Module):
-    def __init__(self):
+    def __init__(self, embedd_size, vocab_size, hidden_size):
         super(WordDecoder, self).__init__()
-        self.embedding = nn.Embedding()
+        self.embedding = nn.Embedding(vocab_size, embedd_size)
+        self.lstm = nn.LSTM(embedd_size*2, hidden_size, 1, batch_first=True)
+        self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size)
+        self.hidden_size = hidden_size
 
-    def forward(self):
+    def forward(self, V, v_g, topic_vector, states=None):
+        embeddings = self.embedding(topic_vector)
+
+        # x_t = [w_t;v_g]
+        x = torch.cat((embeddings, v_g.unsqueeze(1).expand_as(embeddings)), dim=2)
+
+        # Hiddens: Batch x seq_len x hidden_size
+        # Cells: seq_len x Batch x hidden_size, default setup by Pytorch
+        if torch.cuda.is_available():
+            hiddens = torch.zeros(x.size(0), x.size(1), self.hidden_size).cuda()
+            cells = torch.zeros(x.size(1), x.size(0), self.hidden_size).cuda()
+        else:
+            hiddens = torch.zeros(x.size(0), x.size(1), self.hidden_size))
+            cells = torch.zeros(x.size(1), x.size(0), self.hidden_size))
+
+
+        return None
 
 # the following classes are used to implement adaptive attention :P
 
 class AdaptiveLSTMCell(nn.Module):
     def __init__(self, input_size, hidden_size):
         self.lstm_cell = nn.LSTMCell(input_size, hidden_size)
-        self.x_gate = nn.Linear(input_size, hidden_size)
-        self.h_gate = nn.Linear(hidden_size, hidden_size)
+        self.x_gate = nn.Linear(input_size, hidden_size, bias=False)
+        self.h_gate = nn.Linear(hidden_size, hidden_size, bias=False)
+
+        self.init_weights()
+
+    def init_weights(self):
+        init.xavier_uniform_(self.x_gate.weight)
+        init.xavier_uniform_(self.h_gate.weight)
 
     def forward(self, x, prev_h, prev_c):
-
         h, c = self.lstm_cell(x, (prev_h, prev_c))
         g_t = F.sigmoid(self.x_gate(x) + self.h_gate(prev_h))
         s_t = g_t * F.tanh(c)
         return h, c, s_t
 
 class AdaptiveAttention(nn.Module):
-    def __init__(self, ):
-        self.affine_v = nn.Linear()
-        self.affine_g = nn.Linear()
-        self.affine_h = nn.Linear()
-        self.affine_s = nn.Linear()
+    def __init__(self, hidden_size):
+        self.affine_v = nn.Linear(hidden_size, 8*8, bias=False)
+        self.affine_g = nn.Linear(hidden_size, 8*8, bias=False)
+        self.affine_h = nn.Linear(8*8, 1, bias=False)
+        self.affine_s = nn.Linear(hidden_size, 8*8, bias=False)
+
+        self.init_weights()
+
+    def init_weights(self):
+        init.xavier_uniform_(self.affine_v.weight)
+        init.xavier_uniform_(self.affine_g.weight)
+        init.xavier_uniform_(self.affine_h.weight)
+        init.xavier_uniform_(self.affine_s.weight)
 
     def forward(self, V, h_t, s_t):
         content_v = self.affine_v(V).unsqueeze(1) + self.affine_g(h_t).unsqueeze(2)
         z_t = self.affine_h(F.tanh(content_v)).squeeze(3)
         alpha_t = F.softmax(z_t)
 
-        content_s = self.affine_s(s_t) + self.aggine_g(h_t)
+        content_s = self.affine_s(s_t) + self.affine_g(h_t)
         z_t_extended = self.affine_h(F.tanh(content_s))
 
         extended = torch.cat((z_t, z_t_extended), dim=2)
@@ -98,7 +151,48 @@ class AdaptiveAttention(nn.Module):
 
         return c_hat_t, alpha_t, beta_t
 
+class AdaptiveBlock(nn.Module):
+    def __init__(self, embedd_size, hidden_size, vocab_size):
+        super(AdaptiveBlock, self).__init__()
+        self.sentinel = AdaptiveLSTMCell(embedd_size*2, hidden_size)
+        self.attention = AdaptiveAttention(hidden_size)
+
+        self.mlp = nn.Linear(hiden_size, vocab_size)
+
+        self.dropout = nn.Dropout(0.5)
+        self.hidden_size = hidden_size
+
+        self.init_weights()
+
+    def init_weights(self):
+        init.kaiming_normal_(self.mlp.weight, mode='fan_in')
+        self.mlp.bias.data.fill_(0)
+
+    def forward(self, x, hiddens, cells, V):
+        h0 = self.init_hidden(x.size(0))[0].transpose(0,1)
+
+        if hiddens.size(1) > 1:
+            hiddens_t_1 = torch.cat((h0, hiddens[:, :-1, :]), dim=1)
+        else:
+            hiddens_t_1 = h0
+
+        sentinel = self.sentinel(x, hiddens_t_1, cells)
+        c_hat, atten_weights, beta = self.attention(V, hiddens, sentinel)
+        scores = self.mlp(self.dropout(c_hat + hiddens))
+
+        return scores, atten_weights, beta
+
+    def init_hidden(self, bsz):
+        weight = next(self.parameters()).data
+
+        if torch.cuda.is_available():
+            return (weight.new(1, bsz, self.hidden_size).zero_().cuda(),
+                    weight.new(1, bsz, self.hidden_size).zero_().cuda())
+        else:
+            return (weight.new(1, bsz, self.hidden_size).zero_(),
+                    weight.new(1, bsz, self.hidden_size).zero_())
+
 if __name__ == '__main__':
     from torchsummary import summary
-    imageEncoder = ImageEncoder()
+    imageEncoder = ImageEncoder(256, 64)
     print(summary(imageEncoder, (3, 256, 256)))
