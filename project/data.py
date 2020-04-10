@@ -17,7 +17,7 @@ import pickle
 
 
 class CXRDataset(Dataset):
-    def __init__(self, dataset_path, split, transform=[ToTensor()]):
+    def __init__(self, dataset_path, split, transform=[Resize((394, 256)), ToTensor()]):
         self.files = []
         self.transform = transform
 
@@ -42,6 +42,9 @@ class CXRDataset(Dataset):
         image_to_tensor = transforms.Compose(self.transform)
         img = image_to_tensor(Image.open(img_path))
 
+        target = []
+        longest_sentence_length = 0
+
         try:
             with open (report_path, "r") as r_file:
                 file_read = r_file.read()
@@ -60,7 +63,6 @@ class CXRDataset(Dataset):
 
             sentences = ' '.join(report[index+2:index2]).split('. ')
 
-            target = []
             for i, sentence in enumerate(sentences):
                 sentence = sentence.lower().replace('.', '').replace(',', '').split()
                 if len(sentence) == 0: # or len(sentence) > self.n_max:
@@ -69,12 +71,13 @@ class CXRDataset(Dataset):
                 tokens.append(self.vocabulary['<start>'])
                 tokens.extend([self.vocabulary[token] for token in sentence])
                 tokens.append(self.vocabulary['<end>'])
-                # if word_num < len(tokens):
-                #     word_num = len(tokens)
+                if longest_sentence_length < len(tokens):
+                    longest_sentence_length = len(tokens)
                 target.append(tokens)
 
-            return (img, target)
+            # return (img, target)
         except ValueError:
+            pass
             # if 'FINDINGS' in file_read:
             #     print(self.files[idx])
             #     with open (report_path, "r") as r_file:
@@ -84,17 +87,58 @@ class CXRDataset(Dataset):
 
             #     raise ValueError
 
-            return (img, "skip")
+        num_sentences = len(target)
+        return (img, target, num_sentences, longest_sentence_length)
 
+def collate_fn(data):
+    """
+    :param data: list of tuple (image, target, image_id)
+    :return:
+        images: (batch_size, 3, 224, 224)
+        targets: (batch_size, 6, 50)
+        lengths: (batch_size, s_max)
+    """
+    pre_images, pre_captions, num_sentences, longest_sentence_length = zip(*data)
+    
+    # remove empty image-caption pairs
+    images = []
+    captions = []
+    for i in range(len(pre_captions)):
+        cap = pre_captions[i]
+        if len(cap) > 0:
+            images.append(pre_images[i])
+            captions.append(pre_captions[i])
+
+    try:
+        images = torch.stack(images, 0)
+    except RuntimeError: #if the batch ends up being fully corrupt
+        images = torch.tensor(images)
+
+    max_sentence_num = max(num_sentences)
+    max_word_num = max(longest_sentence_length)
+
+    targets = np.zeros((len(captions), max_sentence_num, max_word_num))
+    prob = np.zeros((len(captions), max_sentence_num))
+
+    for i, caption in enumerate(captions):
+        for j, sentence in enumerate(caption):
+            targets[i, j, :len(sentence)] = sentence[:]
+            prob[i, j] = 1
+
+    targets = torch.Tensor(targets).long()
+    prob = torch.Tensor(prob)
+
+    return images, targets, prob
         
 
 # train_dataset = CXRDataset('../data/', 'Train')
-# train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+# train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
 
 # skip = 0
-# for batch_idx, (_, description) in tqdm(enumerate(train_loader)):
+# for batch_idx, (images, target, prob) in enumerate(train_loader):
+#     print("TARGET", target.shape)
 #     try:
-#         if description[0] == 'skip':
+#         if target.shape[0] == 0:
 #             skip += 1
 #     except IndexError:
 #         print("\nDESCRIPTION:", description)
