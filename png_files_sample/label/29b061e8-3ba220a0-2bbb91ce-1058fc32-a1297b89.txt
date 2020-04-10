@@ -1,0 +1,14 @@
+                                 FINAL REPORT
+ CHEST RADIOGRAPH PERFORMED ON ___
+ 
+ COMPARISON:  Prior chest radiographs and chest CT from ___.
+ 
+ CLINICAL HISTORY:  Hemoptysis, breast cancer history, question pneumonia.
+ 
+ FINDINGS:  PA and lateral views of the chest were provided, demonstrating no
+ focal consolidation, effusion, or pneumothorax.  Cardiomediastinal silhouette
+ appears normal.  Tiny clips are noted in the right breast and axilla.  Bony
+ structures appear intact.
+ 
+ IMPRESSION:  No acute findings in the chest.  Please refer to subsequently
+ performed CTA chest for further details.
