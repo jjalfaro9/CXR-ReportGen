@@ -1,0 +1,14 @@
+                                 FINAL REPORT
+ STUDY:  Chest radiograph.
+ 
+ INDICATION:  cough, ___-year-old man.  Rule out pneumonia.
+ 
+ TECHNIQUE:  Two chest radiographs were obtained.
+ 
+ COMPARISON:  ___.
+ 
+ REPORT:  There is a single right ventricular AICD lead in good position. 
+ There is cardiomegaly.  There is no acute cardiopulmonary finding evident.  No
+ additional findings.
+ 
+ CONCLUSION:  No acute cardiopulmonary finding.
