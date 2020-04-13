@@ -17,7 +17,7 @@ import pickle
 
 
 class CXRDataset(Dataset):
-    def __init__(self, dataset_path, split, transform=[Resize((394, 300)), ToTensor()]):
+    def __init__(self, dataset_path, split, transform=[Resize((256, 256)), ToTensor()]):
         self.files = []
         self.transform = transform
 
@@ -38,9 +38,9 @@ class CXRDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.sample + 'img/' + self.files[idx] +'.png'
         report_path = self.sample + 'label/' + self.files[idx] +'.txt'
-        
+
         image_to_tensor = transforms.Compose(self.transform)
-        img = image_to_tensor(Image.open(img_path))
+        img = image_to_tensor(Image.open(img_path).convert('RGB'))
 
         target = []
         longest_sentence_length = 0
@@ -91,7 +91,6 @@ class CXRDataset(Dataset):
 
 def collate_fn(data):
     pre_images, pre_captions, num_sentences, longest_sentence_length = zip(*data)
-    
     # remove empty image-caption pairs
     images = []
     captions = []
@@ -106,8 +105,10 @@ def collate_fn(data):
         images = torch.stack(images, 0)
     except RuntimeError: #if the batch ends up being fully corrupt
         images = torch.tensor(images)
-
-    max_sentence_num = max(num_sentences)
+    try:
+        max_sentence_num = max(num_sentences)
+    except ValueError:
+        max_sentence_num = 0
     max_word_num = max(longest_sentence_length)
 
     targets = np.zeros((len(captions), max_sentence_num, max_word_num))
@@ -124,7 +125,7 @@ def collate_fn(data):
     prob = torch.Tensor(prob)
 
     return images, targets, num_sentences, word_lengths, prob
-        
+
 
 def main():
     train_dataset = CXRDataset('../data/', 'Train')
@@ -143,4 +144,3 @@ def main():
     print(len(train_dataset))
 
 # main()
-

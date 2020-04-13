@@ -8,10 +8,10 @@ import torch.optim.lr_scheduler as LS
 from PIL import Image
 from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
-from torchvision.transforms import Resize, ToTensor
-
-from encoders import Encoder, Decoder
-from loss import cross_entropy_loss
+from torchvision.transforms import Resize
+from torch.nn.utils.rnn import pack_padded_sequence
+from models import ImageEncoder, SentenceDecoder, WordDecoder
+from typing import *
 
 def save_models(args, encoder, decoder, epoch, optimizer, loss):
     path = "save/"
@@ -24,15 +24,20 @@ def save_models(args, encoder, decoder, epoch, optimizer, loss):
             }, path + args.encoder_name+".pth")
 
 def train(train_params, args, train_loader, val_loader):
-    encoder = Encoder()
-    decoder = Decoder()
-    encoder = encoder.to(args.device)
-    decoder = decoder.to(args.device)
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size)
+    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size)
 
     # DETAILS BELOW MATCHING PAPER
-    optimizer = torch.optim.Adam(list(encoder.parameters(), decoder.parameters()), lr=train_params['lr'])
+    params = list(img_enc.affine_a.parameters()) \
+            + list(img_enc.affine_b.parameters()) \
+            + list (sentence_dec.parameters()) \
+            + list(word_dec.parameters())
+
+    optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
     criterion = torch.nn.CrossEntropyLoss()
+    test([img_enc, sentence_dec, word_dec], train_loader, criterion, optimizer)
 
     best_loss = float('inf')
     best_encoder = None
@@ -47,18 +52,35 @@ def train(train_params, args, train_loader, val_loader):
     for epoch in range(train_params['epochs']):
         print('== Epoch:', epoch)
         epoch_loss = 0
+        train_loss = 0
         # TO-DO: Match sure to match DataLoader
-        for batch_idx, (img, description) in enumerate(train_loader):
-            img = img.to(args.device)
+        for batch_idx, (images, targets, num_sentences, word_lengths, prob) in enumerate(train_loader):
+            image_enc.train()
+            sentence_dec.train()
+            word_dec.train()
+            if len(images) == 0:
+                continue
 
-            enc_output = encoder(img)
-            dec_output = decoder(enc_output)
-            loss = criterion(dec_output, description)
+            img_features, img_avg_features = image_enc(images)
+            sentence_states = None
+            sentence_loss = 0
+            word_loss = 0
 
-            optimizer.zero_grad()
+            for sentence_idx in range(reports.shape[1]):
+                stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
+                # TODO: do we need a sentence loss criterion???
+                for word_idx in range(1, reports.shape[2] - 1):
+
+                    scores, _ = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
+                    report_mask = (reports[:, sentence_index, word_index] > 1).view(-1,).float()
+                    # TODO: ensure report mask is correct. might need to update this mask
+                    t_loss = self.criterion(scores, report[:, sentence_index, word_index])
+                    t_loss = t_loss * caption_mask
+                    word_loss += t_loss.sum()
+            loss = word_loss
             loss.backward()
             optimizer.step()
-            epoch_loss += loss
+            train_loss += loss.data[0]
 
 
             if batch_idx % log_interval == 0:
