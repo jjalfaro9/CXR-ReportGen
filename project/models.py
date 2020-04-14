@@ -60,10 +60,13 @@ class SentenceDecoder(nn.Module):
         )
 
     def forward(self, img_feature_vector, states):
-        print('yo in sentence_dec ', img_feature_vector.shape)
+        print('img_feature_vector shape ', img_feature_vector.shape)
+        print('hidden dim', self.hidden_dim)
         output, (h, c) = self.lstm(img_feature_vector, states)
 
+        print("Output shape", output.shape)
         t = self.topic(output)
+        print("topic shape", t.shape)
         u = self.stop(output)
         return u, t, (h, c)
 
@@ -71,15 +74,20 @@ class WordDecoder(nn.Module):
     def __init__(self, vocab_size, hidden_size, embedd_size=256):
         super(WordDecoder, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedd_size)
-        self.lstm = nn.LSTM(embedd_size, hidden_size, 1, batch_first=True)
+        self.lstm = nn.LSTM(input_size=embedd_size, hidden_size=hidden_size, batch_first=True)
         self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size)
         self.hidden_size = hidden_size
 
     def forward(self, V, v_g, topic_vector, report):
 
         embeddings = self.embedding(report)
+        print("embeddings shape", embeddings.shape)
+        print("v_g shape", v_g.unsqueeze(1).shape)
+        print("topic vector shape", topic_vector.shape)
         x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
-        x = x.permute(0,2,1)
+        print("x after cat shape", x.shape)
+        # x = x.permute(0,2,1)
+        print("x after shape", x.shape)
 
         h_t, cells = self.lstm(x)
         scores, atten_weights, beta = self.adaptive(x, h_t, cells, V)
