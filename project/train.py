@@ -13,31 +13,33 @@ from torch.nn.utils.rnn import pack_padded_sequence
 from models import ImageEncoder, SentenceDecoder, WordDecoder
 from typing import *
 
-def save_models(args, encoder, decoder, epoch, optimizer, loss):
+def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
     torch.save({
             'epoch': epoch,
             'encoder_state_dict': encoder.state_dict(),
-            'decoder_state_dict': decoder.state_dict(),
+            'sentence_decoder_state_dict': sentence_decoder.state_dict(),
+            'word_decoder_state_dict': word_decoder.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss
-            }, path + args.encoder_name+".pth")
+            }, path + args.model_name+".pth")
 
 def train(train_params, args, train_loader, val_loader):
-    img_enc = ImageEncoder(args.embedd_size, args.hidden_size)
-    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
-    word_dec = WordDecoder(args.vocab_size, args.hidden_size)
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size).to(args.device)
+    if args.parallel:
+        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
+    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size).to(args.device)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size).to(args.device)
 
     # DETAILS BELOW MATCHING PAPER
-    params = list(img_enc.affine_a.parameters()) \
-            + list(img_enc.affine_b.parameters()) \
+    params = list(img_enc.module.affine_a.parameters()) \
+            + list(img_enc.module.affine_b.parameters()) \
             + list (sentence_dec.parameters()) \
             + list(word_dec.parameters())
 
     optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
-    criterion = torch.nn.CrossEntropyLoss()
-    # test([img_enc, sentence_dec, word_dec], train_loader, criterion, optimizer)
+    criterion = torch.nn.CrossEntropyLoss().to(args.device)
 
     best_loss = float('inf')
     best_encoder = None
@@ -61,6 +63,9 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
+            reports = reports.to(args.device)
+            images = images.to(args.device)
+
             img_features, img_avg_features = img_enc(images)
             sentence_states = None
             sentence_loss = 0
@@ -75,12 +80,12 @@ def train(train_params, args, train_loader, val_loader):
                     report_mask = (reports[:, sentence_idx, word_idx] > 1).view(-1,).float()
                     # TODO: ensure report mask is correct. might need to update this mask
                     t_loss = criterion(scores, reports[:, sentence_idx, word_idx])
-                    t_loss = t_loss * caption_mask
+                    t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
             loss = word_loss
             loss.backward()
             optimizer.step()
-            train_loss += loss.data[0]
+            train_loss += loss.item()
 
 
             if batch_idx % log_interval == 0:
@@ -126,6 +131,8 @@ def train(train_params, args, train_loader, val_loader):
             #             return
             print("OK ONE BATCH DOWN WTF AM I DOING")
 
+        save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
+        epoch_loss = train_loss
         print(f"epoch loss: {epoch_loss}")
         writer.add_scalar('epoch loss', epoch_loss, epoch)
         scheduler.step()
