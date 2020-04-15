@@ -13,6 +13,7 @@ class ImageEncoder(nn.Module):
         self.d121 = nn.Sequential(
             *list(densenet121.features.children())[:-1]
         )
+        self.d121.requires_grad = False
 
         self.avgpool = nn.AvgPool2d(8)
         self.dropout = nn.Dropout(0.5)
@@ -38,8 +39,8 @@ class ImageEncoder(nn.Module):
 
         v_g = F.relu(self.affine_b(self.dropout(a_g)))
 
-        print("V.shape", V.shape)
-        print('v_g.shape', v_g.shape)
+        #print("V.shape", V.shape)
+        #print('v_g.shape', v_g.shape)
 
         return V, v_g
 
@@ -60,13 +61,13 @@ class SentenceDecoder(nn.Module):
         )
 
     def forward(self, img_feature_vector, states):
-        print('img_feature_vector shape ', img_feature_vector.shape)
-        print('hidden dim', self.hidden_dim)
+        #print('img_feature_vector shape ', img_feature_vector.shape)
+        #print('hidden dim', self.hidden_dim)
         output, (h, c) = self.lstm(img_feature_vector, states)
 
-        print("Output shape", output.shape)
+        #print("Output shape", output.shape)
         t = self.topic(output)
-        print("topic shape", t.shape)
+        #print("topic shape", t.shape)
         u = self.stop(output)
         return u, t, (h, c)
 
@@ -76,23 +77,25 @@ class WordDecoder(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedd_size)
         self.lstm = nn.LSTM(input_size=embedd_size, hidden_size=hidden_size, batch_first=True)
         self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size)
+        #if torch.cuda.device_count() > 1:
+            #self.adaptive = nn.DataParallel(self.adaptive, device_ids=range(torch.cuda.device_count()))
         self.hidden_size = hidden_size
 
     def forward(self, V, v_g, topic_vector, report):
 
         embeddings = self.embedding(report)
-        print("embeddings shape", embeddings.shape)
-        print("v_g shape", v_g.unsqueeze(1).shape)
-        print("topic vector shape", topic_vector.shape)
+        #print("embeddings shape", embeddings.shape)
+        #print("v_g shape", v_g.unsqueeze(1).shape)
+        #print("topic vector shape", topic_vector.shape)
         x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
-        print("x after cat shape", x.shape)
+        #print("x after cat shape", x.shape)
         # x = x.permute(0,2,1)
-        print("x after shape", x.shape)
+        #print("x after shape", x.shape)
 
         h_t, cells = self.lstm(x)
         scores, atten_weights, beta = self.adaptive(x, h_t, cells, V)
 
-        return scores, atten_weights, beta
+        return scores[:, -1], atten_weights, beta
 
 class Encoder2Decoder(nn.Module):
     def __init__( self, embedd_size, vocab_size, hidden_size ):

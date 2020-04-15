@@ -24,6 +24,8 @@ if __name__ == '__main__':
                         help='dimension of word embedding vectors, also dimension of v_g' )
     parser.add_argument( '--hidden_size', type=int, default=512,
                          help='dimension of lstm hidden states' )
+    parser.add_argument('--batch_size', type=int, default=32,
+                         help='batch size for data')
 
     args = parser.parse_args()
 
@@ -32,12 +34,14 @@ if __name__ == '__main__':
     else:
         args.device = torch.device('cpu')
 
-    print(f"device: {args.device}")
+    args.parallel = torch.cuda.device_count() > 1
+    args.gpus = range(torch.cuda.device_count())
+    print(f"device: {args.device} parallel: {args.parallel} gpus: {args.gpus}")
 
     train_params = {
         'epochs': args.epochs,
         'lr': args.lr,
-        'batch_size': 8,
+        'batch_size': args.batch_size,
         'validate': True
     }
 

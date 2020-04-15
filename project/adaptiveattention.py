@@ -110,6 +110,9 @@ class AdaptiveBlock(nn.Module):
     def init_hidden_state(self, x):
         h = torch.zeros(x.shape[0], 512)
         c = torch.zeros(x.shape[0], 512)
+        if torch.cuda.is_available():
+            h = h.cuda()
+            c = c.cuda()
         return h, c
 
     def forward(self, x, hiddens, cells, V):
@@ -129,6 +132,10 @@ class AdaptiveBlock(nn.Module):
         scores = torch.zeros(batch_size, decode_length, self.vocab_size)
         atten_weights = torch.zeros(batch_size, decode_length, 65)
         betas = torch.zeros(batch_size, decode_length, 1)
+        if torch.cuda.is_available():
+            scores = scores.cuda()
+            atten_weights = atten_weights.cuda()
+            betas = betas.cuda()
 
         for timestep in range(decode_length):
             current_input = x[:, timestep, :]
