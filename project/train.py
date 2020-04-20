@@ -25,11 +25,17 @@ def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer,
             }, path + args.model_name+".pth")
 
 def train(train_params, args, train_loader, val_loader):
-    img_enc = ImageEncoder(args.embedd_size, args.hidden_size).to(args.device)
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size)
+    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size)
     if args.parallel:
-        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
-    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size).to(args.device)
-    word_dec = WordDecoder(args.vocab_size, args.hidden_size).to(args.device)
+        img_enc = nn.DataParallel(img_enc)
+        sentence_dec = nn.DataParallel(sentence_dec)
+        word_dec = nn.DataParallel(word_dec)
+
+    img_enc.to(args.device)
+    sentence_dec.to(args.device)
+    word_dec.to(args.device)
 
     # DETAILS BELOW MATCHING PAPER
     params = list(img_enc.module.affine_a.parameters()) \
@@ -63,29 +69,37 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
-            reports = reports.to(args.device)
-            images = images.to(args.device)
+            #images = images.to(args.device)
+            #reports = reports.to(args.device)
 
             img_features, img_avg_features = img_enc(images)
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
+            # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
+            del images
+            # reports = reports.to(args.device)
+
 
             for sentence_idx in range(reports.shape[1]):
                 stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
                 # TODO: do we need a sentence loss criterion???
                 for word_idx in range(1, reports.shape[2] - 1):
-
                     scores, atten_weights, beta= word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
-                    report_mask = (reports[:, sentence_idx, word_idx] > 1).view(-1,).float()
+                    golden = reports[:, sentence_idx, word_idx].to(args.device)
+                    report_mask = (golden > 1).view(-1,).float()
                     # TODO: ensure report mask is correct. might need to update this mask
-                    t_loss = criterion(scores, reports[:, sentence_idx, word_idx])
+                    t_loss = criterion(scores, golden)
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
+                    del golden
+                del topic_vec
             loss = word_loss
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
+            del img_features
+            del img_avg_features
 
 
             if batch_idx % log_interval == 0:
@@ -129,7 +143,6 @@ def train(train_params, args, train_loader, val_loader):
             #             print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
             #             writer.close()
             #             return
-            print("OK ONE BATCH DOWN WTF AM I DOING")
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss

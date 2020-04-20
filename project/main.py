@@ -26,11 +26,13 @@ if __name__ == '__main__':
                          help='dimension of lstm hidden states' )
     parser.add_argument('--batch_size', type=int, default=32,
                          help='batch size for data')
+    parser.add_argument('--data_workers', type=int, default=0)
+    parser.add_argument('--pin_mem', type=bool, default=False)
 
     args = parser.parse_args()
 
     if torch.cuda.is_available():
-        args.device = torch.device('cuda')
+        args.device = torch.device('cuda:0')
     else:
         args.device = torch.device('cpu')
 
@@ -53,7 +55,7 @@ if __name__ == '__main__':
     args.vocab_size = len(train_dataset.vocabulary)
 
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'],
-                                shuffle=True, collate_fn=collate_fn)
+                                shuffle=True, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
     val_loader = DataLoader(val_dataset, batch_size=train_params['batch_size'],
                                 shuffle=True, collate_fn=collate_fn)
 

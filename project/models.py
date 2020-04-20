@@ -78,7 +78,7 @@ class WordDecoder(nn.Module):
         self.lstm = nn.LSTM(input_size=embedd_size, hidden_size=hidden_size, batch_first=True)
         self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size)
         #if torch.cuda.device_count() > 1:
-            #self.adaptive = nn.DataParallel(self.adaptive, device_ids=range(torch.cuda.device_count()))
+            #self.adaptive = nn.DataParallel(self.adaptive)
         self.hidden_size = hidden_size
 
     def forward(self, V, v_g, topic_vector, report):
