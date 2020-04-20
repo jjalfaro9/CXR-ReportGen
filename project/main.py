@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     args.parallel = torch.cuda.device_count() > 1
     args.gpus = range(torch.cuda.device_count())
-    print(f"device: {args.device} parallel: {args.parallel} gpus: {args.gpus}")
+    print("device:", args.device, "parallel:", args.parallel, "gpus:", args.gpus)
 
     train_params = {
         'epochs': args.epochs,
@@ -45,8 +45,8 @@ if __name__ == '__main__':
         'validate': True
     }
 
-    print(f"ARGUMENTS: {args}\n")
-    print(f"TRAIN PARAMS: {train_params}\n")
+    print("ARGUMENTS:", args, "\n")
+    print("TRAIN PARAMS:", train_params, "\n")
 
     train_dataset = CXRDataset('../data/', 'Train')
     val_dataset = CXRDataset('../data/', 'Validation')
