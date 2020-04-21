@@ -58,9 +58,9 @@ def train(train_params, args, train_loader, val_loader):
     patience = full_patience
     batch_size = train_params['batch_size']
     writer = SummaryWriter('log/{}'.format(args.model_name))
-    log_interval = int(len(train_loader) / batch_size * 0.5)
-    val_interval = int(len(train_loader) / batch_size)
-    print('log_interval:', log_interval, 'val_interval:', val_interval)
+    log_interval = int(len(train_loader) * 0.5)
+    val_interval = int(len(train_loader))
+    print('log_interval:', log_interval, 'val_interval:', val_interval, 'len of train', len(train_loader))
 
     for epoch in range(train_params['epochs']):
         print('== Epoch:', epoch)
@@ -75,15 +75,15 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
-            images = images.to(args.device)
-            reports = reports.to(args.device)
+            #images = images.to(args.device)
+            #reports = reports.to(args.device)
 
             img_features, img_avg_features = img_enc(images)
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
             # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
-            # del images
+            #del images
             # reports = reports.to(args.device)
 
 
@@ -98,15 +98,18 @@ def train(train_params, args, train_loader, val_loader):
                     t_loss = criterion(scores, golden)
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
-                    # del golden
-                # del topic_vec
+                    #del golden
+                #del stop_signal, topic_vec, scores, atten_weights, beta
             loss = word_loss
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
-            # del img_features
-            # del img_avg_features
+            #del img_features, img_avg_features, sentence_states
 
+            print('yay out of setence loop!')
+            for g in args.gpus:
+                print('what dis look like???\n', torch.cuda.memory_summary(device=g))
 
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx

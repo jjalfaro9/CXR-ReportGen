@@ -28,6 +28,7 @@ class CXRDataset(Dataset):
             self.files.append(file[:-4])
 
         self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+        print('yo yo yo', len(self.files))
 
         # self.p10 = '/data/mimic-cxr/files/p10/'
         # self.p11 = '/data/mimic-cxr/files/p11/'
