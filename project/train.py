@@ -25,22 +25,27 @@ def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer,
             }, path + args.model_name+".pth")
 
 def train(train_params, args, train_loader, val_loader):
-    img_enc = ImageEncoder(args.embedd_size, args.hidden_size)
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
-    word_dec = WordDecoder(args.vocab_size, args.hidden_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size)
     if args.parallel:
         img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
         sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
         word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
+
 
     img_enc.to(args.device)
     sentence_dec.to(args.device)
     word_dec.to(args.device)
 
     # DETAILS BELOW MATCHING PAPER
-    params = list(img_enc.module.affine_a.parameters()) \
-            + list(img_enc.module.affine_b.parameters()) \
-            + list (sentence_dec.parameters()) \
+    if args.parallel:
+        params = list(img_enc.module.affine_a.parameters()) \
+                + list(img_enc.module.affine_b.parameters())
+    else:
+        params = list(img_enc.affine_a.parameters()) \
+                + list(img_enc.affine_b.parameters())
+    params = params + list (sentence_dec.parameters()) \
             + list(word_dec.parameters())
 
     optimizer = torch.optim.Adam(params, lr=train_params['lr'])

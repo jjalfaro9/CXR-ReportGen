@@ -23,7 +23,7 @@ class AdaptiveLSTMCell(nn.Module):
         return h, c, s_t
 
 class AdaptiveAttention(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, img_feature_size):
         super(AdaptiveAttention, self).__init__()
         # self.affine_v = nn.Linear(hidden_size, 8*8, bias=False)
         # self.affine_g = nn.Linear(hidden_size, 8*8, bias=False)
@@ -31,12 +31,12 @@ class AdaptiveAttention(nn.Module):
         # self.affine_s = nn.Linear(hidden_size, 8*8, bias=False)
 
         # self.init_weights()
-        self.sen_affine = nn.Linear(hidden_size, hidden_size)  
-        self.sen_att = nn.Linear(hidden_size, 64)
-        self.h_affine = nn.Linear(hidden_size, hidden_size)   
-        self.h_att = nn.Linear(hidden_size, 64)
-        self.v_att = nn.Linear(hidden_size, 64)
-        self.alphas = nn.Linear(64, 1)
+        self.sen_affine = nn.Linear(hidden_size, hidden_size)
+        self.sen_att = nn.Linear(hidden_size, img_feature_size)
+        self.h_affine = nn.Linear(hidden_size, hidden_size)
+        self.h_att = nn.Linear(hidden_size, img_feature_size)
+        self.v_att = nn.Linear(hidden_size, img_feature_size)
+        self.alphas = nn.Linear(img_feature_size, 1)
         self.context_hidden = nn.Linear(hidden_size, hidden_size)
 
     def init_weights(self):
@@ -77,11 +77,11 @@ class AdaptiveAttention(nn.Module):
         attended_features = torch.cat([visual_attn, sentinel_attn.unsqueeze(1)], dim = 1)     # (batch_size, num_pixels+1, att_dim)
 
         attention = torch.tanh(attended_features + hidden_resized)    # (batch_size, num_pixels+1, att_dim)
-        
+
         alpha = self.alphas(attention).squeeze(2)                   # (batch_size, num_pixels+1)
         alpha_t = torch.softmax(alpha, dim=1)                              # (batch_size, num_pixels+1)
 
-        context = (concat_features * alpha_t.unsqueeze(2)).sum(dim=1)       # (batch_size, hidden_size)     
+        context = (concat_features * alpha_t.unsqueeze(2)).sum(dim=1)       # (batch_size, hidden_size)
         beta_t = alpha_t[:,-1].unsqueeze(1)                       # (batch_size, 1)
 
         c_hat_t = torch.tanh(self.context_hidden(context + hidden_affine))
@@ -89,10 +89,10 @@ class AdaptiveAttention(nn.Module):
         return c_hat_t, alpha_t, beta_t
 
 class AdaptiveBlock(nn.Module):
-    def __init__(self, embedd_size, hidden_size, vocab_size):
+    def __init__(self, embedd_size, hidden_size, vocab_size, img_feature_size):
         super(AdaptiveBlock, self).__init__()
         self.sentinel = AdaptiveLSTMCell(embedd_size, hidden_size)
-        self.attention = AdaptiveAttention(hidden_size)
+        self.attention = AdaptiveAttention(hidden_size, img_feature_size)
 
         self.mlp = nn.Linear(hidden_size, vocab_size)
 
@@ -100,6 +100,7 @@ class AdaptiveBlock(nn.Module):
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.embedd_size = embedd_size
+        self.img_feature_size = img_feature_size
 
         self.init_weights()
 
@@ -123,14 +124,14 @@ class AdaptiveBlock(nn.Module):
         else:
             hiddens_t_1 = h0
 
-        h, c = self.init_hidden_state(x) 
+        h, c = self.init_hidden_state(x)
 
         # TO DO: TIMESTEPS
         batch_size = x.shape[0]
         # TODO: Lengths?
         decode_length = x.shape[1]
         scores = torch.zeros(batch_size, decode_length, self.vocab_size)
-        atten_weights = torch.zeros(batch_size, decode_length, 65)
+        atten_weights = torch.zeros(batch_size, decode_length, self.img_feature_size + 1)
         betas = torch.zeros(batch_size, decode_length, 1)
         if torch.cuda.is_available():
             scores = scores.cuda()
