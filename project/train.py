@@ -69,15 +69,15 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
-            #images = images.to(args.device)
-            #reports = reports.to(args.device)
+            images = images.to(args.device)
+            reports = reports.to(args.device)
 
             img_features, img_avg_features = img_enc(images)
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
-            # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
-            del images
+            print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
+            # del images
             # reports = reports.to(args.device)
 
 
@@ -92,14 +92,14 @@ def train(train_params, args, train_loader, val_loader):
                     t_loss = criterion(scores, golden)
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
-                    del golden
-                del topic_vec
+                    # del golden
+                # del topic_vec
             loss = word_loss
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
-            del img_features
-            del img_avg_features
+            # del img_features
+            # del img_avg_features
 
 
             if batch_idx % log_interval == 0:
