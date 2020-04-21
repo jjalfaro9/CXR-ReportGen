@@ -29,9 +29,9 @@ def train(train_params, args, train_loader, val_loader):
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
     word_dec = WordDecoder(args.vocab_size, args.hidden_size)
     if args.parallel:
-        img_enc = nn.DataParallel(img_enc)
-        sentence_dec = nn.DataParallel(sentence_dec)
-        word_dec = nn.DataParallel(word_dec)
+        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
+        sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
+        word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
 
     img_enc.to(args.device)
     sentence_dec.to(args.device)
@@ -63,6 +63,7 @@ def train(train_params, args, train_loader, val_loader):
         train_loss = 0
         # TO-DO: Match sure to match DataLoader
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
+            print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
             img_enc.train()
             sentence_dec.train()
             word_dec.train()
@@ -76,7 +77,7 @@ def train(train_params, args, train_loader, val_loader):
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
-            print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
+            # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
             # del images
             # reports = reports.to(args.device)
 
