@@ -7,7 +7,7 @@ from torch.nn import init
 from adaptiveattention import AdaptiveBlock
 
 class ImageEncoder(nn.Module):
-    def __init__(self, embedd_size, hidden_size):
+    def __init__(self, embedd_size, hidden_size, img_size):
         super(ImageEncoder, self).__init__()
         densenet121 = models.densenet121(pretrained=True) #, progress=True)
         self.d121 = nn.Sequential(
@@ -15,7 +15,7 @@ class ImageEncoder(nn.Module):
         )
         self.d121.requires_grad = False
 
-        self.avgpool = nn.AvgPool2d(8)
+        self.avgpool = nn.AvgPool2d(img_size//32)
         self.dropout = nn.Dropout(0.5)
 
         self.affine_a = nn.Linear(1024, hidden_size)
@@ -30,7 +30,8 @@ class ImageEncoder(nn.Module):
         self.affine_b.bias.data.fill_(0)
 
     def forward(self, x):
-        A = self.d121(x) # dim size of 8 x 8 x 1024
+        # TODO: once we don't convert to RGB, figure out channel position and extract it
+        A = self.d121(x) # dim size of img_size // 32 x img_size // 32 x 1024
 
         a_g = self.avgpool(A)
         a_g = a_g.view(a_g.size(0), -1)
@@ -72,11 +73,11 @@ class SentenceDecoder(nn.Module):
         return u, t, (h, c)
 
 class WordDecoder(nn.Module):
-    def __init__(self, vocab_size, hidden_size, embedd_size=256):
+    def __init__(self, vocab_size, hidden_size, img_feature_size, embedd_size=256):
         super(WordDecoder, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedd_size)
         self.lstm = nn.LSTM(input_size=embedd_size, hidden_size=hidden_size, batch_first=True)
-        self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size)
+        self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size, img_feature_size)
         #if torch.cuda.device_count() > 1:
             #self.adaptive = nn.DataParallel(self.adaptive)
         self.hidden_size = hidden_size
@@ -152,4 +153,4 @@ class Encoder2Decoder(nn.Module):
 if __name__ == '__main__':
     from torchsummary import summary
     imageEncoder = ImageEncoder(256, 64)
-    print(summary(imageEncoder, (4, 256, 256)))
+    print(summary(imageEncoder, (3, 128, 128)))

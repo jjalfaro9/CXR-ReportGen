@@ -40,6 +40,7 @@ class CXRDataset(Dataset):
         report_path = self.sample + 'label/' + self.files[idx] +'.txt'
 
         image_to_tensor = transforms.Compose(self.transform)
+        # TODO: Don't convert to RGB
         img = image_to_tensor(Image.open(img_path).convert('RGB'))
 
         target = []

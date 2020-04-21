@@ -28,6 +28,7 @@ if __name__ == '__main__':
                          help='batch size for data')
     parser.add_argument('--data_workers', type=int, default=0)
     parser.add_argument('--pin_mem', type=bool, default=False)
+    parser.add_argument('--img_size', type=int, default=128)
 
     args = parser.parse_args()
 
@@ -47,12 +48,13 @@ if __name__ == '__main__':
         'validate': True
     }
 
+    train_dataset = CXRDataset('../data/', 'Train', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
+    val_dataset = CXRDataset('../data/', 'Validation', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
+    args.vocab_size = len(train_dataset.vocabulary)
+    args.img_feature_size = (args.img_size // 32) ** 2
+
     print("ARGUMENTS:", args, "\n")
     print("TRAIN PARAMS:", train_params, "\n")
-
-    train_dataset = CXRDataset('../data/', 'Train')
-    val_dataset = CXRDataset('../data/', 'Validation')
-    args.vocab_size = len(train_dataset.vocabulary)
 
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'],
                                 shuffle=True, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
