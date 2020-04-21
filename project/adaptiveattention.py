@@ -109,34 +109,20 @@ class AdaptiveBlock(nn.Module):
         self.mlp.bias.data.fill_(0)
 
     def init_hidden_state(self, x):
-        h = torch.zeros(x.shape[0], 512)
-        c = torch.zeros(x.shape[0], 512)
-        if torch.cuda.is_available():
-            h = h.cuda()
-            c = c.cuda()
+        h = torch.zeros(x.shape[0], 512).to(x.device)
+        c = torch.zeros(x.shape[0], 512).to(x.device)
         return h, c
 
     def forward(self, x, hiddens, cells, V):
-        h0 = self.init_hidden(x.size(0))[0].transpose(0,1)
-
-        if hiddens.size(1) > 1:
-            hiddens_t_1 = torch.cat((h0, hiddens[:, :-1, :]), dim=1)
-        else:
-            hiddens_t_1 = h0
-
         h, c = self.init_hidden_state(x)
 
         # TO DO: TIMESTEPS
         batch_size = x.shape[0]
         # TODO: Lengths?
         decode_length = x.shape[1]
-        scores = torch.zeros(batch_size, decode_length, self.vocab_size)
-        atten_weights = torch.zeros(batch_size, decode_length, self.img_feature_size + 1)
-        betas = torch.zeros(batch_size, decode_length, 1)
-        if torch.cuda.is_available():
-            scores = scores.cuda()
-            atten_weights = atten_weights.cuda()
-            betas = betas.cuda()
+        scores = torch.zeros(batch_size, decode_length, self.vocab_size).to(x.device)
+        atten_weights = torch.zeros(batch_size, decode_length, self.img_feature_size + 1).to(x.device)
+        betas = torch.zeros(batch_size, decode_length, 1).to(x.device)
 
         for timestep in range(decode_length):
             current_input = x[:, timestep, :]
@@ -148,16 +134,4 @@ class AdaptiveBlock(nn.Module):
             atten_weights[:, timestep, :] = atten_weight
             betas[:, timestep, :] = beta
 
-        # scores = self.mlp(self.dropout(c_hat + hiddens))
-
         return scores, atten_weights, betas
-
-    def init_hidden(self, bsz):
-        weight = next(self.parameters()).data
-
-        if torch.cuda.is_available():
-            return (weight.new(1, bsz, self.hidden_size).zero_().cuda(),
-                    weight.new(1, bsz, self.hidden_size).zero_().cuda())
-        else:
-            return (weight.new(1, bsz, self.hidden_size).zero_(),
-                    weight.new(1, bsz, self.hidden_size).zero_())

@@ -29,7 +29,11 @@ if __name__ == '__main__':
     parser.add_argument('--data_workers', type=int, default=0)
     parser.add_argument('--pin_mem', type=bool, default=False)
     parser.add_argument('--img_size', type=int, default=128)
-
+    parser.add_argument('--run_parallel', type=bool, default=True)
+    parallel_parser = parser.add_mutually_exclusive_group(required=False)
+    parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
+    parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
+    parser.set_defaults(parallel=True)
     args = parser.parse_args()
 
     if torch.cuda.is_available():
@@ -37,9 +41,8 @@ if __name__ == '__main__':
     else:
         args.device = torch.device('cpu')
 
-    args.parallel = torch.cuda.device_count() > 1
+    args.parallel = torch.cuda.device_count() > 1 and args.parallel
     args.gpus = range(torch.cuda.device_count())
-    print("device:", args.device, "parallel:", args.parallel, "gpus:", args.gpus)
 
     train_params = {
         'epochs': args.epochs,
