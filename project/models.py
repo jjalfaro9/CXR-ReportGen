@@ -30,7 +30,7 @@ class ImageEncoder(nn.Module):
         self.affine_b.bias.data.fill_(0)
 
     def forward(self, x):
-        print("\tIn Model: input size", x.size())
+        # print("\tIn Model: input size", x.size())
         # TODO: once we don't convert to RGB, figure out channel position and extract it
         A = self.d121(x) # dim size of img_size // 32 x img_size // 32 x 1024
 
@@ -77,8 +77,9 @@ class WordDecoder(nn.Module):
         super(WordDecoder, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedd_size)
         self.lstm = nn.LSTM(input_size=embedd_size, hidden_size=hidden_size, batch_first=True)
+        # self.out =  nn.Linear(hidden_size, vocab_size, bias=True)
         self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size, img_feature_size)
-        #if torch.cuda.device_count() > 1:
+        # if torch.cuda.device_count() > 1:
             #self.adaptive = nn.DataParallel(self.adaptive)
         self.hidden_size = hidden_size
 
@@ -88,9 +89,10 @@ class WordDecoder(nn.Module):
         x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
 
         h_t, cells = self.lstm(x)
+        # scores = self.out(h_t)
         scores, atten_weights, beta = self.adaptive(x, h_t, cells, V)
 
-        return scores[:, -1], atten_weights, beta
+        return scores[:, -1] #, atten_weights, beta
 
 class Encoder2Decoder(nn.Module):
     def __init__( self, embedd_size, vocab_size, hidden_size ):
