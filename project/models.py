@@ -30,6 +30,7 @@ class ImageEncoder(nn.Module):
         self.affine_b.bias.data.fill_(0)
 
     def forward(self, x):
+        print("\tIn Model: input size", x.size())
         # TODO: once we don't convert to RGB, figure out channel position and extract it
         A = self.d121(x) # dim size of img_size // 32 x img_size // 32 x 1024
 
@@ -40,6 +41,7 @@ class ImageEncoder(nn.Module):
 
         v_g = F.relu(self.affine_b(self.dropout(a_g)))
 
+        # print("\tIn Model: output size", V.size(), v_g.size())
         return V, v_g
 
 class SentenceDecoder(nn.Module):
@@ -81,7 +83,7 @@ class WordDecoder(nn.Module):
         self.hidden_size = hidden_size
 
     def forward(self, V, v_g, topic_vector, report):
-
+        # print("\tIn Model: input size", report.size())
         embeddings = self.embedding(report)
         x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
 

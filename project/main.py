@@ -26,7 +26,7 @@ if __name__ == '__main__':
                          help='dimension of lstm hidden states' )
     parser.add_argument('--batch_size', type=int, default=32,
                          help='batch size for data')
-    parser.add_argument('--data_workers', type=int, default=0)
+    parser.add_argument('--data_workers', type=int, default=8)
     parser.add_argument('--pin_mem', type=bool, default=False)
     parser.add_argument('--img_size', type=int, default=128)
     parser.add_argument('--run_parallel', type=bool, default=True)
