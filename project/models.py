@@ -20,6 +20,7 @@ class ImageEncoder(nn.Module):
 
         self.affine_a = nn.Linear(1024, hidden_size)
         self.affine_b = nn.Linear(1024, embedd_size)
+        self.affine_c = nn.Linear(img_size*img_size, hidden_size)
 
         self.init_weights()
 
@@ -31,15 +32,20 @@ class ImageEncoder(nn.Module):
 
     def forward(self, x):
         # print("\tIn Model: input size", x.size())
-        # TODO: once we don't convert to RGB, figure out channel position and extract it
-        A = self.d121(x) # dim size of img_size // 32 x img_size // 32 x 1024
+
+        # x.shape = [b x c x h x w]
+        img = torch.narrow(x, 1, 0, 3)
+        view_position = torch.flatten(torch.narrow(x, 1, 3, 1), 2, 3) # [b x 1 x h x w] -> [b x 1 x h*w]
+        A = self.d121(img) # dim size of img_size // 32 x img_size // 32 x 1024
 
         a_g = self.avgpool(A)
         a_g = a_g.view(a_g.size(0), -1)
+        v_g = F.relu(self.affine_b(self.dropout(a_g)))
+
         V = A.view(A.size(0), A.size(1), -1).transpose(1,2)
         V = F.relu(self.affine_a(self.dropout(V)))
-
-        v_g = F.relu(self.affine_b(self.dropout(a_g)))
+        view_position = F.relu(self.affine_c(self.dropout(view_position)))
+        V = torch.cat((V, view_position), 1)
 
         # print("\tIn Model: output size", V.size(), v_g.size())
         return V, v_g
