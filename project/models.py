@@ -27,8 +27,10 @@ class ImageEncoder(nn.Module):
     def init_weights(self):
         init.kaiming_uniform_(self.affine_a.weight, mode='fan_in')
         init.kaiming_uniform_(self.affine_b.weight, mode='fan_in')
+        init.kaiming_uniform_(self.affine_c.weight, mode='fan_in')
         self.affine_a.bias.data.fill_(0)
         self.affine_b.bias.data.fill_(0)
+        self.affine_c.bias.data.fill_(0)
 
     def forward(self, x):
         # print("\tIn Model: input size", x.size())
