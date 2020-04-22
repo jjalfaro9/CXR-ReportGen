@@ -99,7 +99,7 @@ class AdaptiveBlock(nn.Module):
         # TODO: Lengths?
         decode_length = x.shape[1]
         scores = torch.zeros(batch_size, decode_length, self.vocab_size).to(x.device)
-        atten_weights = torch.zeros(batch_size, decode_length, self.img_feature_size + 1).to(x.device)
+        atten_weights = torch.zeros(batch_size, decode_length, self.img_feature_size + 2).to(x.device)
         betas = torch.zeros(batch_size, decode_length, 1).to(x.device)
 
         for timestep in range(decode_length):
