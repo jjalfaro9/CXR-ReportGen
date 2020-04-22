@@ -12,6 +12,7 @@ from torchvision.transforms import Resize
 from torch.nn.utils.rnn import pack_padded_sequence
 from models import ImageEncoder, SentenceDecoder, WordDecoder
 from typing import *
+import GPUtil
 
 def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
@@ -69,19 +70,22 @@ def train(train_params, args, train_loader, val_loader):
         # TO-DO: Match sure to match DataLoader
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
             print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
+
+            print("Start of batch:")
+            GPUtil.showUtilization()
+
             img_enc.train()
             sentence_dec.train()
             word_dec.train()
             if len(images) == 0:
                 continue
 
-            images = images.to(args.device)
+            # images = images.to(args.device)
             # reports = reports.to(args.device)
 
-            print("Outside: input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
+            print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
             img_features, img_avg_features = img_enc(images)
-            # print("Outside: output_size", img_features.size(), img_avg_features.size())
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
@@ -93,7 +97,7 @@ def train(train_params, args, train_loader, val_loader):
                 stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
                 # TODO: do we need a sentence loss criterion???
                 for word_idx in range(1, reports.shape[2] - 1):
-                    scores, atten_weights, beta= word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
+                    scores = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
                     golden = reports[:, sentence_idx, word_idx].to(args.device)
                     report_mask = (golden > 1).view(-1,).float()
                     # TODO: ensure report mask is correct. might need to update this mask
@@ -101,23 +105,27 @@ def train(train_params, args, train_loader, val_loader):
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
                     del golden
-                del stop_signal, topic_vec, scores, atten_weights, beta
+                del stop_signal, topic_vec, scores #, atten_weights, beta
             loss = word_loss
             optimizer.zero_grad()
-            loss.backward()
+
+            print("Before loss")
+            GPUtil.showUtilization()
+
+            loss.mean().backward()
             optimizer.step()
             train_loss += loss.detach().cpu().numpy()
-            del img_features, img_avg_features, sentence_states
+
+            print("before del:")
+            GPUtil.showUtilization()
+            del img_features, img_avg_features, sentence_states, loss
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            # print('yay out of setence loop!')
-            # for g in args.gpus:
-                # print('what dis look like???\n', torch.cuda.memory_summary(device=g))
 
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
-                writer.add_scalar('loss', loss.item(), idx)
+                writer.add_scalar('loss', train_loss.item(), idx)
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss
