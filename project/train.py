@@ -69,7 +69,7 @@ def train(train_params, args, train_loader, val_loader):
         train_loss = 0
         # TO-DO: Match sure to match DataLoader
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
-            
+
             print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
 
             print("Start of batch:")
@@ -96,6 +96,7 @@ def train(train_params, args, train_loader, val_loader):
 
             for sentence_idx in range(reports.shape[1]):
                 stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
+                sentence_loss += self.criterion(p, self.__to_var(p_real[:, sentence_index])).sum()
                 # TODO: do we need a sentence loss criterion???
                 for word_idx in range(1, reports.shape[2] - 1):
                     scores = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
@@ -107,7 +108,7 @@ def train(train_params, args, train_loader, val_loader):
                     word_loss += t_loss.sum()
                     del golden
                 del stop_signal, topic_vec, scores #, atten_weights, beta
-            loss = word_loss
+            loss = word_loss + sentence_loss
             optimizer.zero_grad()
 
             print("Before loss")

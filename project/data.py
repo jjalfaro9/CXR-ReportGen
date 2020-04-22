@@ -32,6 +32,9 @@ class CXRDataset(Dataset):
         # self.p10 = '/data/mimic-cxr/files/p10/'
         # self.p11 = '/data/mimic-cxr/files/p11/'
 
+        self.s_max = 6
+        self.n_max = 13
+
     def __len__(self):
         return len(self.files)
 
@@ -65,8 +68,10 @@ class CXRDataset(Dataset):
             sentences = ' '.join(report[index+2:index2]).split('. ')
 
             for i, sentence in enumerate(sentences):
+                if len(target) >= self.s_max:
+                    break
                 sentence = sentence.lower().replace('.', '').replace(',', '').split()
-                if len(sentence) == 0: # or len(sentence) > self.n_max:
+                if len(sentence) == 0 or len(sentence) > self.n_max:
                     continue
                 tokens = list()
                 tokens.append(self.vocabulary['<start>'])
