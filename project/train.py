@@ -69,63 +69,66 @@ def train(train_params, args, train_loader, val_loader):
         train_loss = 0
         # TO-DO: Match sure to match DataLoader
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
-            print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
+            try:
+                print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
 
-            print("Start of batch:")
-            GPUtil.showUtilization()
+                print("Start of batch:")
+                GPUtil.showUtilization()
 
-            img_enc.train()
-            sentence_dec.train()
-            word_dec.train()
-            if len(images) == 0:
-                continue
+                img_enc.train()
+                sentence_dec.train()
+                word_dec.train()
+                if len(images) == 0:
+                    continue
 
-            # images = images.to(args.device)
-            # reports = reports.to(args.device)
+                # images = images.to(args.device)
+                # reports = reports.to(args.device)
 
-            print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
+                print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
-            img_features, img_avg_features = img_enc(images)
-            sentence_states = None
-            sentence_loss = 0
-            word_loss = 0
-            # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
-            del images
+                img_features, img_avg_features = img_enc(images)
+                sentence_states = None
+                sentence_loss = 0
+                word_loss = 0
+                # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
+                del images
 
 
-            for sentence_idx in range(reports.shape[1]):
-                stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
-                # TODO: do we need a sentence loss criterion???
-                for word_idx in range(1, reports.shape[2] - 1):
-                    scores = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
-                    golden = reports[:, sentence_idx, word_idx].to(args.device)
-                    report_mask = (golden > 1).view(-1,).float()
-                    # TODO: ensure report mask is correct. might need to update this mask
-                    t_loss = criterion(scores, golden)
-                    t_loss = t_loss * report_mask
-                    word_loss += t_loss.sum()
-                    del golden
-                del stop_signal, topic_vec, scores #, atten_weights, beta
-            loss = word_loss
-            optimizer.zero_grad()
+                for sentence_idx in range(reports.shape[1]):
+                    stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
+                    # TODO: do we need a sentence loss criterion???
+                    for word_idx in range(1, reports.shape[2] - 1):
+                        scores = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
+                        golden = reports[:, sentence_idx, word_idx].to(args.device)
+                        report_mask = (golden > 1).view(-1,).float()
+                        # TODO: ensure report mask is correct. might need to update this mask
+                        t_loss = criterion(scores, golden)
+                        t_loss = t_loss * report_mask
+                        word_loss += t_loss.sum()
+                        del golden
+                    del stop_signal, topic_vec, scores #, atten_weights, beta
+                loss = word_loss
+                optimizer.zero_grad()
 
-            print("Before loss")
-            GPUtil.showUtilization()
+                print("Before loss")
+                GPUtil.showUtilization()
 
-            loss.mean().backward()
-            optimizer.step()
-            train_loss += loss.detach().cpu().numpy()
+                loss.mean().backward()
+                optimizer.step()
+                train_loss += loss.detach().cpu().numpy()
 
-            print("before del:")
-            GPUtil.showUtilization()
-            del img_features, img_avg_features, sentence_states, loss
+                print("before del:")
+                GPUtil.showUtilization()
+                del img_features, img_avg_features, sentence_states, loss
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
-            if batch_idx % log_interval == 0:
-                idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
-                writer.add_scalar('loss', train_loss.item(), idx)
+                if batch_idx % log_interval == 0:
+                    idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
+                    writer.add_scalar('loss', train_loss.item(), idx)
+            except RuntimeError:
+                print("BATCH TOO BIG -- skipping")
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss
