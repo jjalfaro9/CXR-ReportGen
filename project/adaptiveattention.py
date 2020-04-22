@@ -91,7 +91,7 @@ class AdaptiveBlock(nn.Module):
         c = torch.zeros(x.shape[0], 512).to(x.device)
         return h, c
 
-    def forward(self, x, hiddens, cells, V):
+    def forward(self, x, V):
         h, c = self.init_hidden_state(x)
 
         # TO DO: TIMESTEPS
