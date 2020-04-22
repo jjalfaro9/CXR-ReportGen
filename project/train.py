@@ -50,7 +50,7 @@ def train(train_params, args, train_loader, val_loader):
 
     optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
-    criterion = torch.nn.CrossEntropyLoss().to(args.device)
+    criterion = torch.nn.CrossEntropyLoss()
 
     best_loss = float('inf')
     best_encoder = None
@@ -75,15 +75,18 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
-            #images = images.to(args.device)
-            #reports = reports.to(args.device)
+            images = images.to(args.device)
+            # reports = reports.to(args.device)
+
+            print("Outside: input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
             img_features, img_avg_features = img_enc(images)
+            # print("Outside: output_size", img_features.size(), img_avg_features.size())
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
             # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
-            #del images
+            del images
 
 
             for sentence_idx in range(reports.shape[1]):
@@ -97,18 +100,20 @@ def train(train_params, args, train_loader, val_loader):
                     t_loss = criterion(scores, golden)
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
-                    #del golden
-                #del stop_signal, topic_vec, scores, atten_weights, beta
+                    del golden
+                del stop_signal, topic_vec, scores, atten_weights, beta
             loss = word_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            train_loss += loss.item()
-            #del img_features, img_avg_features, sentence_states
+            train_loss += loss.detach().cpu().numpy()
+            del img_features, img_avg_features, sentence_states
 
-            print('yay out of setence loop!')
-            for g in args.gpus:
-                print('what dis look like???\n', torch.cuda.memory_summary(device=g))
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            # print('yay out of setence loop!')
+            # for g in args.gpus:
+                # print('what dis look like???\n', torch.cuda.memory_summary(device=g))
 
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
