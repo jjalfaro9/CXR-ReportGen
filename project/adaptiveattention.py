@@ -25,12 +25,7 @@ class AdaptiveLSTMCell(nn.Module):
 class AdaptiveAttention(nn.Module):
     def __init__(self, hidden_size, img_feature_size):
         super(AdaptiveAttention, self).__init__()
-        # self.affine_v = nn.Linear(hidden_size, 8*8, bias=False)
-        # self.affine_g = nn.Linear(hidden_size, 8*8, bias=False)
-        # self.affine_h = nn.Linear(8*8, 1, bias=False)
-        # self.affine_s = nn.Linear(hidden_size, 8*8, bias=False)
 
-        # self.init_weights()
         self.sen_affine = nn.Linear(hidden_size, hidden_size)
         self.sen_att = nn.Linear(hidden_size, img_feature_size)
         self.h_affine = nn.Linear(hidden_size, hidden_size)
@@ -46,23 +41,6 @@ class AdaptiveAttention(nn.Module):
         init.xavier_uniform_(self.affine_s.weight)
 
     def forward(self, V, h_t, s_t):
-    # def forward(self, spatial_image, decoder_out, st):
-        # content_v = self.affine_v(V).unsqueeze(1) + self.affine_g(h_t).unsqueeze(2)
-        # z_t = self.affine_h(torch.tanh(content_v)).squeeze(3)
-        # alpha_t = F.softmax(z_t)
-
-        # content_s = self.affine_s(s_t) + self.affine_g(h_t)
-        # z_t_extended = self.affine_h(torch.tanh(content_s)).unsqueeze(2)
-
-        # extended = torch.cat((z_t, z_t_extended), dim=2)
-        # alpha_hat_t = F.softmax(extended)
-        # beta_t = alpha_hat_t[-1]
-
-        # c_t = torch.bmm(alpha_t, V).squeeze(2)
-        # c_hat_t = beta_t * s_t + (1-beta_t) * c_t
-
-        # return c_hat_t, alpha_t, beta_t
-
         num_pixels = V.shape[1]
         visual_attn = self.v_att(V)           # (batch_size,num_pixels,att_dim)
         sentinel_affine = F.relu(self.sen_affine(s_t))     # (batch_size,hidden_size)

@@ -84,7 +84,6 @@ def train(train_params, args, train_loader, val_loader):
             word_loss = 0
             # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
             #del images
-            # reports = reports.to(args.device)
 
 
             for sentence_idx in range(reports.shape[1]):
@@ -114,44 +113,6 @@ def train(train_params, args, train_loader, val_loader):
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
                 writer.add_scalar('loss', loss.item(), idx)
-
-            # if batch_idx % val_interval == 0 and train_params['validate']:
-            #     encoder.eval()
-            #     val_loss = 0
-            #     for batch_idx, (img, description) in enumerate(val_loader):
-            #         img = img.to(args.device)
-            #         enc_output = encoder(img)
-            #         dec_output = decoder(enc_output)
-
-            #         val_loss += criterion(dec_output, description).item()
-            #     writer.add_scalar('val_loss', val_loss / len(val_loader), idx)
-            #     writer.flush()
-
-            #     if best_loss > val_loss:
-            #         best_loss = val_loss
-            #         best_encoder = copy.deepcopy(encoder)
-            #         best_decoder = copy.deepcopy(decoder)
-            #         save_models(args,
-            #             encoder,
-            #             decoder,
-            #             epoch,
-            #             optimizer,
-            #             loss)
-            #         print('Improved: current best_loss on val:{}'.format(best_loss))
-            #         patience = full_patience
-            #     else:
-            #         patience -= 1
-            #         print('patience', patience)
-            #         if patience == 0:
-            #             save_models(args,
-            #                 encoder,
-            #                 decoder,
-            #                 epoch,
-            #                 optimizer,
-            #                 loss)
-            #             print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
-            #             writer.close()
-            #             return
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss
