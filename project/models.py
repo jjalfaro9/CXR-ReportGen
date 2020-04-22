@@ -9,7 +9,7 @@ from adaptiveattention import AdaptiveBlock
 class ImageEncoder(nn.Module):
     def __init__(self, embedd_size, hidden_size, img_size):
         super(ImageEncoder, self).__init__()
-        densenet121 = models.densenet121(pretrained=True) #, progress=True)
+        densenet121 = models.densenet121(pretrained=True)
         self.d121 = nn.Sequential(
             *list(densenet121.features.children())[:-1]
         )
@@ -40,9 +40,6 @@ class ImageEncoder(nn.Module):
 
         v_g = F.relu(self.affine_b(self.dropout(a_g)))
 
-        #print("V.shape", V.shape)
-        #print('v_g.shape', v_g.shape)
-
         return V, v_g
 
 class SentenceDecoder(nn.Module):
@@ -62,8 +59,6 @@ class SentenceDecoder(nn.Module):
         )
 
     def forward(self, img_feature_vector, states):
-        #print('img_feature_vector shape ', img_feature_vector.shape)
-        #print('hidden dim', self.hidden_dim)
         # TODO only do this when running on multiple GPUs
         if states is not None:
             s0 = states[0].permute(1,0,2).contiguous()
@@ -71,9 +66,7 @@ class SentenceDecoder(nn.Module):
             states = (s0, s1)
         output, (h, c) = self.lstm(img_feature_vector, states)
 
-        #print("Output shape", output.shape, 'h.shape', h.shape, 'c.shape', c.shape)
         t = self.topic(output)
-        #print("topic shape", t.shape)
         u = self.stop(output)
         return u, t, (h.permute(1,0,2).contiguous(), c.permute(1,0,2).contiguous())
 
@@ -90,13 +83,7 @@ class WordDecoder(nn.Module):
     def forward(self, V, v_g, topic_vector, report):
 
         embeddings = self.embedding(report)
-        #print("embeddings shape", embeddings.shape)
-        #print("v_g shape", v_g.unsqueeze(1).shape)
-        #print("topic vector shape", topic_vector.shape)
         x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
-        #print("x after cat shape", x.shape)
-        # x = x.permute(0,2,1)
-        #print("x after shape", x.shape)
 
         h_t, cells = self.lstm(x)
         scores, atten_weights, beta = self.adaptive(x, h_t, cells, V)
@@ -114,12 +101,6 @@ class Encoder2Decoder(nn.Module):
         self.word_dec = WordDecoder(embedd_size, vocab_size, hidden_size)
 
     def forward(self, images, captions, lengths):
-        # TODO: 4 GPUS
-        # if torch.cuda.device_count() > 1:
-        #     device_ids = range( torch.cuda.device_count() )
-        #     encoder_parallel = torch.nn.DataParallel( self.encoder, device_ids=device_ids )
-        #     V, v_g = encoder_parallel( images )
-        # else:
         V, v_g = self.image_enc( images )
 
         u = 1
