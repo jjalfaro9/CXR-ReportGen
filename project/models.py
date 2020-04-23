@@ -78,7 +78,7 @@ class SentenceDecoder(nn.Module):
 
         t = self.topic(output)
         u = self.stop(output)
-        return u, t, (h.permute(1,0,2).contiguous(), c.permute(1,0,2).contiguous())
+        return u[:,-1, :], t, (h.permute(1,0,2).contiguous(), c.permute(1,0,2).contiguous())
 
 class WordDecoder(nn.Module):
     def __init__(self, vocab_size, hidden_size, img_feature_size, embedd_size=256):

@@ -96,7 +96,7 @@ def train(train_params, args, train_loader, val_loader):
 
             for sentence_idx in range(reports.shape[1]):
                 stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
-                sentence_loss += self.criterion(p, self.__to_var(p_real[:, sentence_index])).sum()
+                sentence_loss += criterion(stop_signal.squeeze(1), prob[:, sentence_idx].long().to(args.device)).long().sum()
                 # TODO: do we need a sentence loss criterion???
                 for word_idx in range(1, reports.shape[2] - 1):
                     scores = word_dec(img_features, img_avg_features, topic_vec, reports[:, sentence_idx, :word_idx])
