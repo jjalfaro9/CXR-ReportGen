@@ -32,8 +32,8 @@ class CXRDataset(Dataset):
         # self.p10 = '/data/mimic-cxr/files/p10/'
         # self.p11 = '/data/mimic-cxr/files/p11/'
 
-        self.s_max = 6
-        self.n_max = 13
+        self.s_max = 13
+        self.n_max = 25
 
     def __len__(self):
         return len(self.files)
