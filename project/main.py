@@ -59,9 +59,9 @@ if __name__ == '__main__':
     print("TRAIN PARAMS:", train_params, "\n")
 
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'],
-                                shuffle=True, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
+                                shuffle=False, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
     val_loader = DataLoader(val_dataset, batch_size=train_params['batch_size'],
-                                shuffle=True, collate_fn=collate_fn)
+                                shuffle=False, collate_fn=collate_fn)
 
 
     train(train_params, args, train_loader, val_loader)
