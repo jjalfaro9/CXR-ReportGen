@@ -1,5 +1,6 @@
 import glob
 import os
+import pydicom
 
 def main():
     data_path = "/data/mimic-cxr/files/"
@@ -24,7 +25,19 @@ def main():
                             if '.html' in dcm_name:
                                 continue
 
-                            print('writing')
+                            # print('writing')
+                            try:
+                                report_path = data_path + sub + '/' + sub_sub + '/' + f + '.txt'
+                                with open (report_path, "r") as r_file:
+                                    pass
+                            except FileNotFoundError:
+                                print('no report associated with this image')
+                                continue
+                            try:
+                                pydicom.read_file(data_path + sub + '/' + sub_sub + '/' + f + '/' + dcm_name).pixel_array
+                            except ValueError:
+                                print('bad image')
+                                continue
                             report_file.write(data_path + sub + '/' + sub_sub + '/' + f + '.txt\n')
                             img_file.write(data_path + sub + '/' + sub_sub + '/' + f + '/' + dcm_name + '\n')
             except NotADirectoryError:
