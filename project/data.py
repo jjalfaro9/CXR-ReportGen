@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import json
 from skimage.io import imread
 from PIL import Image
@@ -14,36 +17,50 @@ from torchvision.transforms import Resize, ToTensor
 from tqdm import tqdm
 import re
 import pickle
-
+import pydicom
+import io
 
 class CXRDataset(Dataset):
-    def __init__(self, dataset_path, split, transform=[Resize((256, 256)), ToTensor()]):
+    def __init__(self, split, transform=[Resize((256, 256)), ToTensor()]):
         self.files = []
         self.transform = transform
 
         # sample dataset for testing
-        self.sample = '../png_files_sample/'
-        self.files = []
-        for file in os.listdir(self.sample + 'img'):
-            self.files.append(file[:-4])
+        self.data_path = '../data/'
+
+        self.images = []
+        for line in open(self.data_path+'all_images.txt'):
+            self.images.append(line.strip())
+
+        self.reports = []
+        for line in open(self.data_path+'all_reports.txt'):
+            self.reports.append(line.strip())
 
         self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
-
-        # self.p10 = '/data/mimic-cxr/files/p10/'
-        # self.p11 = '/data/mimic-cxr/files/p11/'
 
         self.s_max = 6
         self.n_max = 13
 
     def __len__(self):
-        return len(self.files)
+        return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = self.sample + 'img/' + self.files[idx] +'.png'
-        report_path = self.sample + 'label/' + self.files[idx] +'.txt'
+        img_path = self.images[idx]
+        report_path = self.reports[idx]
 
+        ds = pydicom.dcmread(img_path)
+        cmap_reversed = matplotlib.cm.get_cmap('binary_r')
+        plt.imshow(ds.pixel_array, cmap=cmap_reversed)
+        plt.gca().axes.get_yaxis().set_visible(False)
+        plt.gca().axes.get_xaxis().set_visible(False)
+
+        buf = io.BytesIO()
+        plt.savefig(buf, bbox_inches='tight')
+        buf.seek(0)
+
+        # TODO: Don't convert to RGB
         image_to_tensor = transforms.Compose(self.transform)
-        img = image_to_tensor(Image.open(img_path))
+        img = image_to_tensor(Image.open(buf).convert('RGB'))
 
         target = []
         longest_sentence_length = 0
@@ -133,7 +150,7 @@ def collate_fn(data):
 
 
 def main():
-    train_dataset = CXRDataset('../data/', 'Train')
+    train_dataset = CXRDataset('Train')
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
 
     skip = 0
@@ -148,4 +165,5 @@ def main():
     print(skip)
     print(len(train_dataset))
 
-# main()
+main()
+

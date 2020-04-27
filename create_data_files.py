@@ -17,14 +17,20 @@ def main():
         for sub_sub in os.listdir(data_path + sub + '/'):
             try:
                 for f in os.listdir(data_path + sub + '/' + sub_sub + '/'):
+                    if '.txt' in f or '.html' in f:
+                        pass
+                    else:
+                        for dcm_name in os.listdir(data_path + sub + '/' + sub_sub + '/' + f):
+                            if '.html' in dcm_name:
+                                continue
 
-                    if '.txt' in f:
-                        print('writing')
-                        report_file.write(data_path + sub + '/' + sub_sub + '/'+ f +'\n')
-                        img_file.write(data_path + sub + '/' + sub_sub + '/' + f[:-4] +'\n')
+                            print('writing')
+                            report_file.write(data_path + sub + '/' + sub_sub + '/' + f + '.txt\n')
+                            img_file.write(data_path + sub + '/' + sub_sub + '/' + f + '/' + dcm_name + '\n')
             except NotADirectoryError:
                 continue
 
 main()
+
 
 
