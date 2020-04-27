@@ -2189,7 +2189,6 @@
 /data/mimic-cxr/files/p10/p10002559/s52212843.txt
 /data/mimic-cxr/files/p10/p10002559/s59849480.txt
 /data/mimic-cxr/files/p10/p10002559/s59849480.txt
-/data/mimic-cxr/files/p10/p10761105/s50902671.txt
 /data/mimic-cxr/files/p10/p10401318/s59030330.txt
 /data/mimic-cxr/files/p10/p10401318/s59030330.txt
 /data/mimic-cxr/files/p10/p10401318/s56447172.txt
@@ -28083,7 +28082,6 @@
 /data/mimic-cxr/files/p11/p11248793/s52645095.txt
 /data/mimic-cxr/files/p11/p11248793/s57045819.txt
 /data/mimic-cxr/files/p11/p11248793/s57045819.txt
-/data/mimic-cxr/files/p11/p11248793/s54439616.txt
 /data/mimic-cxr/files/p11/p11248793/s56921779.txt
 /data/mimic-cxr/files/p11/p11248793/s56921779.txt
 /data/mimic-cxr/files/p11/p11248793/s51836351.txt
@@ -28955,9 +28953,6 @@
 /data/mimic-cxr/files/p11/p11717901/s57477344.txt
 /data/mimic-cxr/files/p11/p11303801/s58315536.txt
 /data/mimic-cxr/files/p11/p11303801/s58315536.txt
-/data/mimic-cxr/files/p11/p11239874/s50860368.txt
-/data/mimic-cxr/files/p11/p11239874/s59914987.txt
-/data/mimic-cxr/files/p11/p11239874/s59914987.txt
 /data/mimic-cxr/files/p11/p11644888/s51360536.txt
 /data/mimic-cxr/files/p11/p11644888/s51360536.txt
 /data/mimic-cxr/files/p11/p11937068/s50353360.txt
@@ -31648,7 +31643,6 @@
 /data/mimic-cxr/files/p11/p11151295/s59601673.txt
 /data/mimic-cxr/files/p11/p11151295/s52881449.txt
 /data/mimic-cxr/files/p11/p11151295/s52881449.txt
-/data/mimic-cxr/files/p11/p11151295/s55201685.txt
 /data/mimic-cxr/files/p11/p11151295/s57878404.txt
 /data/mimic-cxr/files/p11/p11151295/s55328523.txt
 /data/mimic-cxr/files/p11/p11151295/s51395592.txt
@@ -32432,8 +32426,6 @@
 /data/mimic-cxr/files/p11/p11084430/s59630439.txt
 /data/mimic-cxr/files/p11/p11084430/s52116677.txt
 /data/mimic-cxr/files/p11/p11084430/s52116677.txt
-/data/mimic-cxr/files/p11/p11084430/s52700332.txt
-/data/mimic-cxr/files/p11/p11084430/s52700332.txt
 /data/mimic-cxr/files/p11/p11084430/s52460913.txt
 /data/mimic-cxr/files/p11/p11084430/s52460913.txt
 /data/mimic-cxr/files/p11/p11084430/s57179153.txt
@@ -32471,7 +32463,6 @@
 /data/mimic-cxr/files/p11/p11144816/s58695477.txt
 /data/mimic-cxr/files/p11/p11144816/s58695477.txt
 /data/mimic-cxr/files/p11/p11144816/s57461324.txt
-/data/mimic-cxr/files/p11/p11144816/s56806755.txt
 /data/mimic-cxr/files/p11/p11144816/s53202723.txt
 /data/mimic-cxr/files/p11/p11144816/s58224605.txt
 /data/mimic-cxr/files/p11/p11144816/s58224605.txt
@@ -36307,8 +36298,6 @@
 /data/mimic-cxr/files/p11/p11821100/s51620663.txt
 /data/mimic-cxr/files/p11/p11821100/s51620663.txt
 /data/mimic-cxr/files/p11/p11821100/s51620663.txt
-/data/mimic-cxr/files/p11/p11292496/s58726259.txt
-/data/mimic-cxr/files/p11/p11292496/s58726259.txt
 /data/mimic-cxr/files/p11/p11292496/s50658444.txt
 /data/mimic-cxr/files/p11/p11292496/s50658444.txt
 /data/mimic-cxr/files/p11/p11292496/s50022045.txt
@@ -37719,9 +37708,6 @@
 /data/mimic-cxr/files/p11/p11493909/s54358177.txt
 /data/mimic-cxr/files/p11/p11258377/s50191845.txt
 /data/mimic-cxr/files/p11/p11258377/s53034384.txt
-/data/mimic-cxr/files/p11/p11258377/s50120302.txt
-/data/mimic-cxr/files/p11/p11258377/s50120302.txt
-/data/mimic-cxr/files/p11/p11258377/s50120302.txt
 /data/mimic-cxr/files/p11/p11258377/s53446748.txt
 /data/mimic-cxr/files/p11/p11031528/s55275593.txt
 /data/mimic-cxr/files/p11/p11031528/s55275593.txt
@@ -37830,8 +37816,6 @@
 /data/mimic-cxr/files/p11/p11840403/s53582706.txt
 /data/mimic-cxr/files/p11/p11024504/s54757631.txt
 /data/mimic-cxr/files/p11/p11024504/s54757631.txt
-/data/mimic-cxr/files/p11/p11135247/s56021240.txt
-/data/mimic-cxr/files/p11/p11135247/s56021240.txt
 /data/mimic-cxr/files/p11/p11532830/s50698548.txt
 /data/mimic-cxr/files/p11/p11532830/s50698548.txt
 /data/mimic-cxr/files/p11/p11532830/s50034528.txt
@@ -39335,9 +39319,6 @@
 /data/mimic-cxr/files/p11/p11863442/s55213450.txt
 /data/mimic-cxr/files/p11/p11164952/s51433866.txt
 /data/mimic-cxr/files/p11/p11164952/s51433866.txt
-/data/mimic-cxr/files/p11/p11270971/s52892535.txt
-/data/mimic-cxr/files/p11/p11270971/s52892535.txt
-/data/mimic-cxr/files/p11/p11270971/s52892535.txt
 /data/mimic-cxr/files/p11/p11619755/s52260423.txt
 /data/mimic-cxr/files/p11/p11619755/s56543840.txt
 /data/mimic-cxr/files/p11/p11619755/s56543840.txt
@@ -40149,10 +40130,8 @@
 /data/mimic-cxr/files/p11/p11118348/s56515413.txt
 /data/mimic-cxr/files/p11/p11118348/s56515413.txt
 /data/mimic-cxr/files/p11/p11165483/s55419834.txt
-/data/mimic-cxr/files/p11/p11165483/s53582650.txt
 /data/mimic-cxr/files/p11/p11165483/s51509772.txt
 /data/mimic-cxr/files/p11/p11165483/s51509772.txt
-/data/mimic-cxr/files/p11/p11165483/s51716923.txt
 /data/mimic-cxr/files/p11/p11165483/s54692630.txt
 /data/mimic-cxr/files/p11/p11165483/s54692630.txt
 /data/mimic-cxr/files/p11/p11165483/s56717280.txt
@@ -40940,7 +40919,6 @@
 /data/mimic-cxr/files/p11/p11825239/s53254073.txt
 /data/mimic-cxr/files/p11/p11825239/s53254073.txt
 /data/mimic-cxr/files/p11/p11282309/s56885776.txt
-/data/mimic-cxr/files/p11/p11282309/s50129697.txt
 /data/mimic-cxr/files/p11/p11282309/s50067789.txt
 /data/mimic-cxr/files/p11/p11172882/s59201196.txt
 /data/mimic-cxr/files/p11/p11172882/s52677747.txt
@@ -46124,7 +46102,6 @@
 /data/mimic-cxr/files/p11/p11087410/s50329614.txt
 /data/mimic-cxr/files/p11/p11087410/s58534912.txt
 /data/mimic-cxr/files/p11/p11087410/s56724948.txt
-/data/mimic-cxr/files/p11/p11087410/s59747527.txt
 /data/mimic-cxr/files/p11/p11087410/s56774036.txt
 /data/mimic-cxr/files/p11/p11087410/s56663389.txt
 /data/mimic-cxr/files/p11/p11087410/s56138106.txt
@@ -51310,7 +51287,6 @@
 /data/mimic-cxr/files/p11/p11176370/s57943263.txt
 /data/mimic-cxr/files/p11/p11176370/s56447032.txt
 /data/mimic-cxr/files/p11/p11176370/s55479430.txt
-/data/mimic-cxr/files/p11/p11176370/s52753066.txt
 /data/mimic-cxr/files/p11/p11176370/s56556962.txt
 /data/mimic-cxr/files/p11/p11176370/s57640860.txt
 /data/mimic-cxr/files/p11/p11647782/s58432225.txt
@@ -55365,7 +55341,6 @@
 /data/mimic-cxr/files/p11/p11184724/s57784288.txt
 /data/mimic-cxr/files/p11/p11184724/s55656758.txt
 /data/mimic-cxr/files/p11/p11184724/s56445350.txt
-/data/mimic-cxr/files/p11/p11184724/s52218404.txt
 /data/mimic-cxr/files/p11/p11184724/s57291375.txt
 /data/mimic-cxr/files/p11/p11184724/s57291375.txt
 /data/mimic-cxr/files/p11/p11427270/s52064412.txt
@@ -57488,7 +57463,6 @@
 /data/mimic-cxr/files/p11/p11158326/s52171336.txt
 /data/mimic-cxr/files/p11/p11158326/s51779374.txt
 /data/mimic-cxr/files/p11/p11158326/s54037372.txt
-/data/mimic-cxr/files/p11/p11158326/s59583075.txt
 /data/mimic-cxr/files/p11/p11158326/s50007556.txt
 /data/mimic-cxr/files/p11/p11158326/s53118948.txt
 /data/mimic-cxr/files/p11/p11158326/s50059248.txt
@@ -57846,8 +57820,6 @@
 /data/mimic-cxr/files/p11/p11688185/s55335188.txt
 /data/mimic-cxr/files/p11/p11180265/s53808407.txt
 /data/mimic-cxr/files/p11/p11180265/s53808407.txt
-/data/mimic-cxr/files/p11/p11180265/s52263696.txt
-/data/mimic-cxr/files/p11/p11180265/s52263696.txt
 /data/mimic-cxr/files/p11/p11500650/s51713992.txt
 /data/mimic-cxr/files/p11/p11500650/s51713992.txt
 /data/mimic-cxr/files/p11/p11988172/s59279509.txt
@@ -57937,7 +57909,6 @@
 /data/mimic-cxr/files/p11/p11140309/s57370916.txt
 /data/mimic-cxr/files/p11/p11140309/s57370916.txt
 /data/mimic-cxr/files/p11/p11140309/s57370916.txt
-/data/mimic-cxr/files/p11/p11140309/s57306015.txt
 /data/mimic-cxr/files/p11/p11140309/s50559945.txt
 /data/mimic-cxr/files/p11/p11140309/s50559945.txt
 /data/mimic-cxr/files/p11/p11140309/s58755371.txt
@@ -60391,8 +60362,6 @@
 /data/mimic-cxr/files/p11/p11317871/s51170320.txt
 /data/mimic-cxr/files/p11/p11317871/s50096790.txt
 /data/mimic-cxr/files/p11/p11317871/s50096790.txt
-/data/mimic-cxr/files/p11/p11298472/s52422234.txt
-/data/mimic-cxr/files/p11/p11298472/s52422234.txt
 /data/mimic-cxr/files/p11/p11679839/s51524574.txt
 /data/mimic-cxr/files/p11/p11679259/s56228367.txt
 /data/mimic-cxr/files/p11/p11679259/s56228367.txt
@@ -61572,7 +61541,6 @@
 /data/mimic-cxr/files/p11/p11268579/s54372139.txt
 /data/mimic-cxr/files/p11/p11268579/s59367294.txt
 /data/mimic-cxr/files/p11/p11268579/s51929940.txt
-/data/mimic-cxr/files/p11/p11268579/s56550006.txt
 /data/mimic-cxr/files/p11/p11268579/s59127635.txt
 /data/mimic-cxr/files/p11/p11268579/s56587253.txt
 /data/mimic-cxr/files/p11/p11268579/s56632558.txt
@@ -62444,7 +62412,6 @@
 /data/mimic-cxr/files/p11/p11101925/s53240929.txt
 /data/mimic-cxr/files/p11/p11101925/s56205909.txt
 /data/mimic-cxr/files/p11/p11101925/s57344283.txt
-/data/mimic-cxr/files/p11/p11101925/s50523250.txt
 /data/mimic-cxr/files/p11/p11101925/s57636577.txt
 /data/mimic-cxr/files/p11/p11101925/s59323734.txt
 /data/mimic-cxr/files/p11/p11101925/s53005350.txt
@@ -66373,8 +66340,6 @@
 /data/mimic-cxr/files/p11/p11053635/s52549176.txt
 /data/mimic-cxr/files/p11/p11299673/s51364111.txt
 /data/mimic-cxr/files/p11/p11299673/s51364111.txt
-/data/mimic-cxr/files/p11/p11299673/s51499823.txt
-/data/mimic-cxr/files/p11/p11299673/s51499823.txt
 /data/mimic-cxr/files/p11/p11633382/s51251224.txt
 /data/mimic-cxr/files/p11/p11633382/s51251224.txt
 /data/mimic-cxr/files/p11/p11633382/s51533267.txt

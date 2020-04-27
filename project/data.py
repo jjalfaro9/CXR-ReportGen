@@ -36,7 +36,7 @@ class CXRDataset(Dataset):
         for line in open(self.data_path+'all_reports.txt'):
             self.reports.append(line.strip())
 
-        self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+        self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
 
         self.s_max = 6
         self.n_max = 13
@@ -48,19 +48,21 @@ class CXRDataset(Dataset):
         img_path = self.images[idx]
         report_path = self.reports[idx]
 
-        ds = pydicom.dcmread(img_path)
-        cmap_reversed = matplotlib.cm.get_cmap('binary_r')
-        plt.imshow(ds.pixel_array, cmap=cmap_reversed)
-        plt.gca().axes.get_yaxis().set_visible(False)
-        plt.gca().axes.get_xaxis().set_visible(False)
+        # ds = pydicom.dcmread(img_path)
+        ds = pydicom.read_file(img_path).pixel_array
+        # cmap_reversed = matplotlib.cm.get_cmap('binary_r')
+        # plt.imshow(ds.pixel_array, cmap=cmap_reversed)
+        # plt.gca().axes.get_yaxis().set_visible(False)
+        # plt.gca().axes.get_xaxis().set_visible(False)
 
-        buf = io.BytesIO()
-        plt.savefig(buf, bbox_inches='tight')
-        buf.seek(0)
+        # buf = io.BytesIO()
+        # plt.savefig(buf, bbox_inches='tight')
+        # buf.seek(0)
 
         # TODO: Don't convert to RGB
         image_to_tensor = transforms.Compose(self.transform)
-        img = image_to_tensor(Image.open(buf).convert('RGB'))
+        # img = image_to_tensor(Image.open(buf).convert('RGB'))
+        img = image_to_tensor(Image.fromarray(ds).convert('RGB'))
 
         target = []
         longest_sentence_length = 0
@@ -151,11 +153,12 @@ def collate_fn(data):
 
 def main():
     train_dataset = CXRDataset('Train')
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
 
     skip = 0
     for batch_idx, (images, targets, num_sentences, word_lengths, prob) in enumerate(train_loader):
-        print("TARGET", targets.shape, num_sentences, word_lengths)
+        print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
+        print("TARGET", images.shape, targets.shape)
         try:
             if targets.shape[0] == 0:
                 skip += 1
