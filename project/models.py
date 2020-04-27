@@ -38,7 +38,7 @@ class ImageEncoder(nn.Module):
         # x.shape = [b x c x h x w]
         # img = torch.narrow(x, 1, 0, 3)
         # view_position = torch.flatten(torch.narrow(x, 1, 3, 1), 2, 3) # [b x 1 x h x w] -> [b x 1 x h*w]
-        A = self.d121(img) # dim size of img_size // 32 x img_size // 32 x 1024
+        A = self.d121(x) # dim size of img_size // 32 x img_size // 32 x 1024
 
         a_g = self.avgpool(A)
         a_g = a_g.view(a_g.size(0), -1)
