@@ -50,8 +50,8 @@ if __name__ == '__main__':
         'validate': True
     }
 
-    train_dataset = CXRDataset('../data/', 'Train', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
-    val_dataset = CXRDataset('../data/', 'Validation', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
+    train_dataset = CXRDataset('Train', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
+    val_dataset = CXRDataset('Validation', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
     args.vocab_size = len(train_dataset.vocabulary)
     args.img_feature_size = (args.img_size // 32) ** 2
 
