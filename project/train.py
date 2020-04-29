@@ -7,12 +7,12 @@ import torch.nn as nn
 import torch.optim.lr_scheduler as LS
 from PIL import Image
 from torchvision import transforms
-from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import Resize
 from torch.nn.utils.rnn import pack_padded_sequence
 from models import ImageEncoder, SentenceDecoder, WordDecoder
 from typing import *
 import GPUtil
+import time
 
 def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
@@ -58,11 +58,11 @@ def train(train_params, args, train_loader, val_loader):
     full_patience = 10
     patience = full_patience
     batch_size = train_params['batch_size']
-    writer = SummaryWriter('log/{}'.format(args.model_name))
     log_interval = int(len(train_loader) * 0.5)
     val_interval = int(len(train_loader))
     print('log_interval:', log_interval, 'val_interval:', val_interval, 'len of train', len(train_loader))
 
+    start = time.time()
     for epoch in range(train_params['epochs']):
         print('== Epoch:', epoch)
         epoch_loss = 0
@@ -70,10 +70,11 @@ def train(train_params, args, train_loader, val_loader):
         # TO-DO: Match sure to match DataLoader
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
 
-            print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
+            print("BATCH STATUS:", batch_idx, (batch_idx+1)/len(train_loader), time.time()-start)
+            start = time.time()
 
-            print("Start of batch:")
-            GPUtil.showUtilization()
+            # print("Start of batch:")
+            # GPUtil.showUtilization()
 
             img_enc.train()
             sentence_dec.train()
@@ -84,14 +85,14 @@ def train(train_params, args, train_loader, val_loader):
             # images = images.to(args.device)
             # reports = reports.to(args.device)
 
-            print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
+            # print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
             img_features, img_avg_features = img_enc(images)
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
             # print('lets look at where these tensors live!', img_features.device, img_avg_features.device)
-            del images
+            # del images
 
 
             for sentence_idx in range(reports.shape[1]):
@@ -106,34 +107,33 @@ def train(train_params, args, train_loader, val_loader):
                     t_loss = criterion(scores, golden)
                     t_loss = t_loss * report_mask
                     word_loss += t_loss.sum()
-                    del golden
-                del stop_signal, topic_vec, scores #, atten_weights, beta
+                    # del golden
+                # del stop_signal, topic_vec, scores #, atten_weights, beta
+
             loss = word_loss + sentence_loss
             optimizer.zero_grad()
 
-            print("Before loss")
-            GPUtil.showUtilization()
+            # print("Before loss")
+            # GPUtil.showUtilization()
 
             loss.mean().backward()
             optimizer.step()
             train_loss += loss.detach().cpu().numpy()
 
-            print("before del:")
-            GPUtil.showUtilization()
-            del img_features, img_avg_features, sentence_states, loss
+            # print("before del:")
+            # GPUtil.showUtilization()
+            # del img_features, img_avg_features, sentence_states, loss
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # if torch.cuda.is_available():
+            #     torch.cuda.empty_cache()
 
-            if batch_idx % log_interval == 0:
-                idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
-                writer.add_scalar('loss', train_loss.item(), idx)
+            # if batch_idx % log_interval == 0:
+            #     idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
+            #     writer.add_scalar('loss', train_loss.item(), idx)
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss
         print(f"epoch loss: {epoch_loss}")
-        writer.add_scalar('epoch loss', epoch_loss, epoch)
         scheduler.step()
 
     print('Finished: Best L1 loss on val:{}'.format(best_loss))
-    writer.close()
