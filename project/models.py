@@ -71,16 +71,16 @@ class SentenceDecoder(nn.Module):
 
     def forward(self, img_feature_vector, states):
         # TODO only do this when running on multiple GPUs
-        if states is not None:
-            s0 = states[0].permute(1,0,2).contiguous()
-            s1 = states[1].permute(1,0,2).contiguous()
-            states = (s0, s1)
+        # if states is not None:
+        #     s0 = states[0].permute(1,0,2).contiguous()
+        #     s1 = states[1].permute(1,0,2).contiguous()
+        #     states = (s0, s1)
         output, (h, c) = self.lstm(img_feature_vector, states)
         hidden = h.permute(1,0,2).contiguous()
 
         t = self.topic(hidden)
         u = self.stop(hidden)
-        return u[:,-1, :], t, (h.permute(1,0,2).contiguous(), c.permute(1,0,2).contiguous())
+        return u[:,-1, :], t, (h, c)
 
 class WordDecoder(nn.Module):
     def __init__(self, vocab_size, hidden_size, img_feature_size, embedd_size=256):
