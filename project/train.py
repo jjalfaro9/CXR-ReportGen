@@ -82,8 +82,8 @@ def train(train_params, args, train_loader, val_loader):
             if len(images) == 0:
                 continue
 
-            # images = images.to(args.device)
-            # reports = reports.to(args.device)
+            images = images.to(args.device)
+            reports = reports.to(args.device)
 
             # print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
