@@ -26,25 +26,26 @@ class CXRDataset(Dataset):
         self.transform = transform
 
         # sample dataset for testing
-        self.data_path = '../data/'
+        self.data_path = '../data/'+split.lower()
 
         self.images = []
-        for line in open(self.data_path+'all_images.txt'):
+        for line in open(self.data_path+'_images.txt'):
             self.images.append(line.strip())
 
         self.reports = []
-        for line in open(self.data_path+'all_reports.txt'):
+        for line in open(self.data_path+'_reports.txt'):
             self.reports.append(line.strip())
 
         self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
 
-        self.s_max = 6
-        self.n_max = 13
+        self.s_max = 8
+        self.n_max = 18
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
+        # print(idx)
         img_path = self.images[idx]
         report_path = self.reports[idx]
 
