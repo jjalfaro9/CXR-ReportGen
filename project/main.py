@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
-    parser.set_defaults(parallel=True)
+    parser.set_defaults(parallel=False)
     args = parser.parse_args()
 
     if torch.cuda.is_available():
