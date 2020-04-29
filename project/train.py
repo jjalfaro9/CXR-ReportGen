@@ -27,10 +27,10 @@ def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer,
             'loss': loss
             }, path + args.model_name+".pth")
 
-def train(train_params, args, train_loader):
+def train(train_params, args, train_loader, val_loader, word_vectors):
     img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
-    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size, word_vectors)
     if args.parallel:
         img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
         sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
