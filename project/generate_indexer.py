@@ -77,6 +77,7 @@ def addWordsToIndexer(report_path, idxr):
 
 if __name__ == '__main__':
     idxr = Indexer()
+    idxr.get_index('<pad>')
     idxr.get_index('<start>')
     idxr.get_index('<end>')
     idxr.get_index('<unk>')
