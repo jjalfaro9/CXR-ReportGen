@@ -85,7 +85,7 @@ class SentenceDecoder(nn.Module):
 class WordDecoder(nn.Module):
     def __init__(self, vocab_size, hidden_size, img_feature_size, word_vectors, embedd_size=256):
         super(WordDecoder, self).__init__()
-        slef.embedding = nn.Embedding.from_pretrained(torch.from_numpy(word_vectors).float(), freeze=not self.training) 
+        self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(word_vectors).float(), freeze=not self.training)
         self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size, img_feature_size)
         self.hidden_size = hidden_size
 

@@ -59,7 +59,7 @@ if __name__ == '__main__':
     test_dataset = CXRDataset('test', transform=[Resize((args.img_size, args.img_size)), ToTensor()], use_sample=args.use_sample)
     args.vocab_size = len(train_dataset.vocabulary)
     args.img_feature_size = (args.img_size // 32) ** 2
-    word_vectors = KeyedVectors.load(args.word_vecs_path, mmap='r')
+    word_vectors = KeyedVectors.load(args.word_vecs_path, mmap='r').vectors
 
     print("ARGUMENTS:", args, "\n")
     print("TRAIN PARAMS:", train_params, "\n")
