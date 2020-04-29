@@ -76,9 +76,10 @@ class SentenceDecoder(nn.Module):
             s1 = states[1].permute(1,0,2).contiguous()
             states = (s0, s1)
         output, (h, c) = self.lstm(img_feature_vector, states)
+        hidden = h.permute(1,0,2).contiguous()
 
-        t = self.topic(output)
-        u = self.stop(output)
+        t = self.topic(hidden)
+        u = self.stop(hidden)
         return u[:,-1, :], t, (h.permute(1,0,2).contiguous(), c.permute(1,0,2).contiguous())
 
 class WordDecoder(nn.Module):

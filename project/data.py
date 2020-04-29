@@ -21,48 +21,54 @@ import pydicom
 import io
 
 class CXRDataset(Dataset):
-    def __init__(self, split, transform=[Resize((256, 256)), ToTensor()]):
+    def __init__(self, split, transform=[Resize((256, 256)), ToTensor()], use_sample=False):
         self.files = []
         self.transform = transform
+        self.use_sample = use_sample
 
-        # sample dataset for testing
-        self.data_path = '../data/'
+        if self.use_sample:
+            self.sample = '../png_files_sample/'
+            self.files = []
+            for file in os.listdir(self.sample + 'img'):
+                self.files.append(file[:-4])
 
-        self.images = []
-        for line in open(self.data_path+'all_images.txt'):
-            self.images.append(line.strip())
+            self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+        else:
+            self.data_path = '../data/'+split.lower()
+            self.images = []
+            for line in open(self.data_path+'_images.txt'):
+                self.images.append(line.strip())
 
-        self.reports = []
-        for line in open(self.data_path+'all_reports.txt'):
-            self.reports.append(line.strip())
+            self.reports = []
+            for line in open(self.data_path+'_reports.txt'):
+                self.reports.append(line.strip())
 
-        self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
-
-        self.s_max = 6
-        self.n_max = 13
+            self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
+        self.s_max = 8
+        self.n_max = 18
 
     def __len__(self):
-        return len(self.images)
+        if self.use_sample:
+            return len(self.files)
+        else:
+            return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = self.images[idx]
-        report_path = self.reports[idx]
+        if self.use_sample:
+            img_path = self.sample + 'img/' + self.files[idx] +'.png'
+            report_path = self.sample + 'label/' + self.files[idx] +'.txt'
 
-        # ds = pydicom.dcmread(img_path)
-        ds = pydicom.read_file(img_path).pixel_array
-        # cmap_reversed = matplotlib.cm.get_cmap('binary_r')
-        # plt.imshow(ds.pixel_array, cmap=cmap_reversed)
-        # plt.gca().axes.get_yaxis().set_visible(False)
-        # plt.gca().axes.get_xaxis().set_visible(False)
+            image_to_tensor = transforms.Compose(self.transform)
+            img = image_to_tensor(Image.open(img_path).convert('RGB'))
+        else:
+            img_path = self.images[idx]
+            report_path = self.reports[idx]
 
-        # buf = io.BytesIO()
-        # plt.savefig(buf, bbox_inches='tight')
-        # buf.seek(0)
+            ds = pydicom.read_file(img_path).pixel_array
 
-        # TODO: Don't convert to RGB
-        image_to_tensor = transforms.Compose(self.transform)
-        # img = image_to_tensor(Image.open(buf).convert('RGB'))
-        img = image_to_tensor(Image.fromarray(ds).convert('RGB'))
+            # TODO: Don't convert to RGB
+            image_to_tensor = transforms.Compose(self.transform)
+            img = image_to_tensor(Image.fromarray(ds).convert('RGB'))
 
         target = []
         longest_sentence_length = 0
@@ -101,14 +107,6 @@ class CXRDataset(Dataset):
 
         except ValueError:
             pass
-            # if 'FINDINGS' in file_read:
-            #     print(self.files[idx])
-            #     with open (report_path, "r") as r_file:
-            #         print("FILE \n", file_read, "\n")
-
-            #     print("\n ---------------------------------------- \n")
-
-            #     raise ValueError
 
         num_sentences = len(target)
         return (img, target, num_sentences, longest_sentence_length)
