@@ -14,36 +14,59 @@ from torchvision.transforms import Resize, ToTensor
 from tqdm import tqdm
 import re
 import pickle
-
+import pydicom
+import io
 
 class CXRDataset(Dataset):
-    def __init__(self, dataset_path, split, transform=[Resize((256, 256)), ToTensor()]):
+    def __init__(self, split, transform=[Resize((256, 256)), ToTensor()], use_sample=False):
         self.files = []
         self.transform = transform
+        self.use_sample = use_sample
 
-        # sample dataset for testing
-        self.sample = '../png_files_sample/'
-        self.files = []
-        for file in os.listdir(self.sample + 'img'):
-            self.files.append(file[:-4])
+        if self.use_sample:
+            self.sample = '../png_files_sample/'
+            self.files = []
+            for file in os.listdir(self.sample + 'img'):
+                self.files.append(file[:-4])
 
-        self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+            self.vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+        else:
+            self.data_path = '../data/'+split.lower()
+            self.images = []
+            for line in open(self.data_path+'_images.txt'):
+                self.images.append(line.strip())
 
-        # self.p10 = '/data/mimic-cxr/files/p10/'
-        # self.p11 = '/data/mimic-cxr/files/p11/'
+            self.reports = []
+            for line in open(self.data_path+'_reports.txt'):
+                self.reports.append(line.strip())
 
-        self.s_max = 6
-        self.n_max = 13
+            self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
+
+        self.s_max = 8
+        self.n_max = 18
 
     def __len__(self):
-        return len(self.files)
+        if self.use_sample:
+            return len(self.files)
+        else:
+            return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = self.sample + 'img/' + self.files[idx] +'.png'
-        report_path = self.sample + 'label/' + self.files[idx] +'.txt'
+        if self.use_sample:
+            img_path = self.sample + 'img/' + self.files[idx] +'.png'
+            report_path = self.sample + 'label/' + self.files[idx] +'.txt'
 
-        image_to_tensor = transforms.Compose(self.transform)
-        img = image_to_tensor(Image.open(img_path))
+            image_to_tensor = transforms.Compose(self.transform)
+            img = image_to_tensor(Image.open(img_path))
+        else:
+            img_path = self.images[idx]
+            report_path = self.reports[idx]
+
+            ds = pydicom.read_file(img_path).pixel_array
+
+            # TODO: Don't convert to RGB
+            image_to_tensor = transforms.Compose(self.transform)
+            img = image_to_tensor(Image.fromarray(ds).convert('RGB'))
 
         target = []
         longest_sentence_length = 0
@@ -82,14 +105,6 @@ class CXRDataset(Dataset):
 
         except ValueError:
             pass
-            # if 'FINDINGS' in file_read:
-            #     print(self.files[idx])
-            #     with open (report_path, "r") as r_file:
-            #         print("FILE \n", file_read, "\n")
-
-            #     print("\n ---------------------------------------- \n")
-
-            #     raise ValueError
 
         num_sentences = len(target)
         return (img, target, num_sentences, longest_sentence_length)
@@ -133,12 +148,13 @@ def collate_fn(data):
 
 
 def main():
-    train_dataset = CXRDataset('../data/', 'Train')
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
+    train_dataset = CXRDataset('Train')
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
 
     skip = 0
     for batch_idx, (images, targets, num_sentences, word_lengths, prob) in enumerate(train_loader):
-        print("TARGET", targets.shape, num_sentences, word_lengths)
+        print("BATCH STATUS:", (batch_idx+1)/len(train_loader))
+        print("TARGET", images.shape, targets.shape)
         try:
             if targets.shape[0] == 0:
                 skip += 1
@@ -149,3 +165,4 @@ def main():
     print(len(train_dataset))
 
 # main()
+
