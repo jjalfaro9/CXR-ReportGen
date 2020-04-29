@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--continue_training', type=bool, default=False)
     parser.add_argument('--img_size', type=int, default=256)
     parser.add_argument('--word_vecs_path', type=str, default='glove256_vocab.kv', help='path to word vectors file')
+    parser.add_argument('--gpu', type=int, default=0)
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if torch.cuda.is_available():
-        args.device = torch.device('cuda:0')
+        args.device = torch.device(f'cuda:{args.gpu}')
     else:
         args.device = torch.device('cpu')
 
