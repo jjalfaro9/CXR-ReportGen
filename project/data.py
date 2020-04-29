@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import json
 from skimage.io import imread
 from PIL import Image
@@ -41,7 +44,6 @@ class CXRDataset(Dataset):
                 self.reports.append(line.strip())
 
             self.vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
-
         self.s_max = 8
         self.n_max = 18
 

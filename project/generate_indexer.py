@@ -44,13 +44,16 @@ class Indexer(object):
         return self.objs_to_ints[object]
 
 
-def addWordsToIndexer(file, idxr):
-    report_path = '../png_files_sample/label/{name}.txt'.format(name=file)
-    with open (report_path, "r") as r_file:
-        file_read = r_file.read()
-        report = re.split("[\n:]", file_read)
-        for i in range(len(report)):
-            report[i] = report[i].strip().lower()
+def addWordsToIndexer(report_path, idxr):
+    try:
+        with open (report_path, "r") as r_file:
+            file_read = r_file.read()
+            report = re.split("[\n:]", file_read)
+            for i in range(len(report)):
+                report[i] = report[i].strip().lower()
+    except FileNotFoundError:
+        print('seriously wtf')
+        return
 
     try:
         index = report.index('findings')
@@ -68,12 +71,13 @@ def addWordsToIndexer(file, idxr):
         sentence = sentence.lower().replace('.', '').replace(',', '').split()
         if len(sentence) == 0: # or len(sentence) > self.n_max:
             continue
-        
+
         for token in sentence:
             idxr.get_index(token)
 
 if __name__ == '__main__':
     idxr = Indexer()
+    idxr.get_index('<pad>')
     idxr.get_index('<start>')
     idxr.get_index('<end>')
     idxr.get_index('<unk>')
@@ -81,8 +85,9 @@ if __name__ == '__main__':
     skipped = 0
     files = []
 
-    for file in os.listdir('../png_files_sample/label'):
-        files.append(file[:-4])
+    files = []
+    for line in open('../data/all_reports.txt'):
+        files.append(line.strip())
 
     for f in files:
         try:
@@ -96,7 +101,7 @@ if __name__ == '__main__':
 
     print(len(idxr.objs_to_ints))
 
-    pickle.dump(idxr.objs_to_ints, open('sample_idxr-obj', 'wb'))  
+    pickle.dump(idxr.objs_to_ints, open('full_idxr-obj', 'wb'))  
    
 
 
