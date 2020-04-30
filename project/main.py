@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_workers', type=int, default=8)
     parser.add_argument('--pin_mem', type=bool, default=False)
     parser.add_argument('--use_sample', type=bool, default=False)
+    parser.add_argument('--continue_training', type=bool, default=False)
     parser.add_argument('--img_size', type=int, default=256)
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
