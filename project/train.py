@@ -14,6 +14,7 @@ from typing import *
 import GPUtil
 import time
 import pickle
+import tqdm
 
 def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
@@ -54,6 +55,13 @@ def train(train_params, args, train_loader):
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
     criterion = torch.nn.CrossEntropyLoss()
 
+    if args.continue_training:
+        model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
+        img_enc.load_state_dict(model_dict['encoder_state_dict'])
+        sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
+        word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
+        optimizer.load_state_dict(model_dict['optimizer_state_dict'])
+
     best_loss = float('inf')
     best_encoder = None
     full_patience = 10
@@ -69,9 +77,9 @@ def train(train_params, args, train_loader):
         epoch_loss = 0
         train_loss = 0
         # TO-DO: Match sure to match DataLoader
-        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(train_loader):
+        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in tqdm.tqdm(enumerate(train_loader)):
 
-            print("BATCH STATUS:", batch_idx, (batch_idx+1)/len(train_loader), time.time()-start)
+            # print("BATCH STATUS:", batch_idx, (batch_idx+1)/len(train_loader), time.time()-start)
             start = time.time()
 
             # print("Start of batch:")
@@ -148,7 +156,6 @@ def test(train_params, args, test_loader):
         sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
         word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
 
-    model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
     if args.use_sample:
         vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
     else:
@@ -159,6 +166,11 @@ def test(train_params, args, test_loader):
     img_enc.to(args.device)
     sentence_dec.to(args.device)
     word_dec.to(args.device)
+
+    model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
+    img_enc.load_state_dict(model_dict['encoder_state_dict'])
+    sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
+    word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
 
     for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(test_loader):
         img_enc.eval()
