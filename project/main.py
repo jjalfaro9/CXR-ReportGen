@@ -7,7 +7,7 @@ import torchvision.datasets as dataset
 import torchvision.transforms as transforms
 from torchvision.transforms import Resize, ToTensor
 
-from train import train
+from train import train, test
 from data import CXRDataset, collate_fn
 
 if __name__ == '__main__':
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     }
 
     train_dataset = CXRDataset('train', transform=[Resize((args.img_size, args.img_size)), ToTensor()], use_sample=args.use_sample)
-    test_dataset = CXRDataset('test', transform=[Resize((args.img_size, args.img_size)), ToTensor()])
+    test_dataset = CXRDataset('test', transform=[Resize((args.img_size, args.img_size)), ToTensor()], use_sample=args.use_sample)
     args.vocab_size = len(train_dataset.vocabulary)
     args.img_feature_size = (args.img_size // 32) ** 2
 
@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'],
                                 shuffle=False, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
-    test_loader = DataLoader(test_dataset, batch_size=train_params['batch_size'],
-                                shuffle=False, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
 
 
-    train(train_params, args, train_loader, test_loader)
+    train(train_params, args, train_loader)
+    # test(train_params, args, test_loader)

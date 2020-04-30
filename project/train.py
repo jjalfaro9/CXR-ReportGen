@@ -13,6 +13,7 @@ from models import ImageEncoder, SentenceDecoder, WordDecoder
 from typing import *
 import GPUtil
 import time
+import pickle
 
 def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
@@ -25,7 +26,7 @@ def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer,
             'loss': loss
             }, path + args.model_name+".pth")
 
-def train(train_params, args, train_loader, val_loader):
+def train(train_params, args, train_loader):
     img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
     word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size)
@@ -137,3 +138,61 @@ def train(train_params, args, train_loader, val_loader):
         scheduler.step()
 
     print('Finished: Best L1 loss on val:{}'.format(best_loss))
+
+def test(train_params, args, test_loader):
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
+    sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size)
+    if args.parallel:
+        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
+        sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
+        word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
+
+    model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
+    if args.use_sample:
+        vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
+    else:
+        vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
+
+    inv_vocab = {v: k for k, v in vocabulary.items()}
+
+    img_enc.to(args.device)
+    sentence_dec.to(args.device)
+    word_dec.to(args.device)
+
+    for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(test_loader):
+        img_enc.eval()
+        sentence_dec.eval()
+        word_dec.eval()
+
+        if len(images) == 0:
+            continue
+
+        images = images.to(args.device)
+        reports = reports.to(args.device)
+
+
+        img_features, img_avg_features = img_enc(images)
+        sentence_states = None
+
+        pred_reports = [[]]
+        s_max = 8
+        n_max = 18
+        sentence_idx = 0
+
+        # for sentence_idx in range(reports.shape[1]):
+        while sentence_idx < s_max: # stop_signal.item() <= 0.5:
+            stop_signal, topic_vec, sentence_states = sentence_dec(img_features, sentence_states)
+            
+            sentence = [1]
+            # for word_idx in range(1, reports.shape[2] - 1):
+            for word_idx in range(1, n_max):
+                scores = word_dec(img_features, img_avg_features, topic_vec, torch.LongTensor([sentence[:word_idx]]).to(args.device))
+                word = torch.argmax(scores.squeeze(0)).item()
+                sentence.append(word)
+
+            pred_reports[0].append(sentence)
+            sentence_idx += 1
+
+        print("PRED:", [[inv_vocab[word_i] for word_i in sentence] for sentence in pred_reports[0]])
+        print("TRUE:", [[inv_vocab[word_i.item()] for word_i in sentence] for sentence in reports[0]])
