@@ -34,6 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('--img_size', type=int, default=256)
     parser.add_argument('--word_vecs_path', type=str, default='glove256_vocab.kv', help='path to word vectors file')
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--use_radiomics', type=bool, default=False)
+    parser.add_argument('--radiomics_path', type=str, default='../data/radiomics_features.csv')
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')

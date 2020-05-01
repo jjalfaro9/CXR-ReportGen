@@ -15,6 +15,7 @@ import GPUtil
 import time
 import pickle
 import tqdm
+from csv import reader
 
 def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
@@ -28,6 +29,11 @@ def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer,
             }, path + args.model_name+".pth")
 
 def train(train_params, args, train_loader, val_loader, word_vectors):
+    if args.use_radiomics:
+        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
+        # adding a row for radiomics features
+        args.img_feature_size = args.img_feature_size + 1
+
     img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
     word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size, word_vectors)
@@ -77,8 +83,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
         epoch_loss = 0
         train_loss = 0
         # TO-DO: Match sure to match DataLoader
-        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in tqdm.tqdm(enumerate(train_loader)):
-
+        for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in tqdm.tqdm(enumerate(train_loader)):
             # print("BATCH STATUS:", batch_idx, (batch_idx+1)/len(train_loader), time.time()-start)
             start = time.time()
 
@@ -97,6 +102,10 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             # print("Input size [img] [rep]", images.size(), reports.size(), np.prod(reports.shape))
 
             img_features, img_avg_features = img_enc(images)
+            if args.use_radiomics:
+                radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
+                img_features = torch.cat((img_features,radiomics_features), 1)
+                
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
@@ -208,3 +217,29 @@ def test(train_params, args, test_loader):
 
         print("PRED:", [[inv_vocab[word_i] for word_i in sentence] for sentence in pred_reports[0]])
         print("TRUE:", [[inv_vocab[word_i.item()] for word_i in sentence] for sentence in reports[0]])
+        
+            
+def get_all_radiomic_features(data_path):
+    with open(data_path, 'r') as read_obj:
+        # pass the file object to reader() to get the reader object
+        csv_reader = reader(read_obj)
+        # Pass reader object to list() to get a list of lists
+        rows = list(csv_reader)
+    images = [x[0] for x in rows[1:]]
+    values = [[float(y) for y in x[1:]] for x in rows[1:]]
+    features = dict(zip(images, values))
+    return features
+    
+    
+def get_image_radiomic_features(image_paths, dimensions, all_radiomic_features):
+    radiomics_tensor = torch.Tensor(len(image_paths),1,dimensions)
+    for i in range(len(image_paths)):
+        path = image_paths[i]
+        r_features = all_radiomic_features[path[3:]]
+        r_features.extend([0 for i in range(dimensions - len(r_features))])
+        temp = torch.Tensor(1,512)
+        temp[0] = torch.Tensor(r_features)
+        radiomics_tensor[i] = temp
+    return radiomics_tensor
+    
+
