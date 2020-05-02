@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torchvision import models
 from torch.nn import init
 
-from adaptiveattention import AdaptiveBlock
+from att import AdaptiveAttention
 
 class ImageEncoder(nn.Module):
     def __init__(self, embedd_size, hidden_size, img_size):
@@ -33,7 +33,6 @@ class ImageEncoder(nn.Module):
         # self.affine_c.bias.data.fill_(0)
 
     def forward(self, x):
-        # print("\tIn Model: input size", x.size())
 
         # x.shape = [b x c x h x w]
         # img = torch.narrow(x, 1, 0, 3)
@@ -50,16 +49,12 @@ class ImageEncoder(nn.Module):
         # view_position = F.relu(self.affine_c(self.dropout(view_position)))
         # V = torch.cat((V, view_position), 1)
 
-        # print("\tIn Model: output size", V.size(), v_g.size())
         return V, v_g
 
 class SentenceDecoder(nn.Module):
-    def __init__(self, vocab_dim, hidden_dim, img_feature_dim=256):
+    def __init__(self, hidden_dim, img_feature_dim=256):
         super(SentenceDecoder, self).__init__()
-        self.vocab_dim = vocab_dim
-        self.hidden_dim = hidden_dim
-        self.img_feature_dim = img_feature_dim
-        self.lstm = nn.LSTM(input_size=img_feature_dim*2, hidden_size=hidden_dim, batch_first=True)
+        self.lstmCell = nn.LSTMCell(img_feature_dim, hidden_dim)
         self.topic = nn.Sequential(
             nn.Linear(in_features=hidden_dim, out_features=img_feature_dim),
             nn.ReLU()
@@ -69,79 +64,27 @@ class SentenceDecoder(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, img_feature_vector, states):
-        # TODO only do this when running on multiple GPUs
-        # if states is not None:
-        #     s0 = states[0].permute(1,0,2).contiguous()
-        #     s1 = states[1].permute(1,0,2).contiguous()
-        #     states = (s0, s1)
-        output, (h, c) = self.lstm(img_feature_vector, states)
-        hidden = h.permute(1,0,2).contiguous()
+    def forward(self, v_hat, states):
+        h_t, c_t = self.lstmCell(v_hat, states)
 
-        t = self.topic(hidden)
-        u = self.stop(hidden)
-        return u[:,-1, :], t, (h, c)
+        t = self.topic(h_t)
+        u = self.stop(h_t)
+
+        return u, t, (h_t, c_t)
 
 class WordDecoder(nn.Module):
     def __init__(self, vocab_size, hidden_size, img_feature_size, word_vectors, embedd_size=256):
         super(WordDecoder, self).__init__()
-        self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(word_vectors).float(), freeze=not self.training)
-        self.adaptive = AdaptiveBlock(embedd_size, hidden_size, vocab_size, img_feature_size)
-        self.hidden_size = hidden_size
+        wv = torch.from_numpy(word_vectors).float()
+        self.embedding = nn.Embedding.from_pretrained(wv, freeze=not self.training)
+        self.adaptive = AdaptiveAttention(embedd_size, hidden_size, img_feature_size, vocab_size)
 
     def forward(self, V, v_g, topic_vector, report):
         embeddings = self.embedding(report)
-        x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector), dim=1)
+        x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector.unsqueeze(1)), dim=1)
+        scores = self.adaptive(x, V)
 
-        scores, atten_weights, beta = self.adaptive(x, V)
-
-        return scores[:, -1] #, atten_weights, beta
-
-class Encoder2Decoder(nn.Module):
-    def __init__( self, embedd_size, vocab_size, hidden_size ):
-        super( Encoder2Decoder, self ).__init__()
-
-        self.hidden_size = hidden_size
-
-        self.image_enc = ImageEncoder(embedd_size, hidden_size)
-        self.sentence_dec = SentenceDecoder(vocab_size, hidden_size)
-        self.word_dec = WordDecoder(embedd_size, vocab_size, hidden_size)
-
-    def forward(self, images, captions, lengths):
-        V, v_g = self.image_enc( images )
-
-        u = 1
-        states = None
-        # TODO: WIll list affect placement on GPU?
-        sentence_scores = []
-
-        # loop through sentence decoder until u > 0.5
-        while (u > 0.5):
-            u, t, states = self.sentence_dec(v_g, states)
-            scores, states, atten_weights, beta = self.word_dec(V, v_g, t)
-            packed_scores = pack_padded_sequence(scores, lengths, batch_first=True )
-            sentence_scores.append(packed_scores)
-
-        return sentence_scores
-
-    def sample(images, max_len=100):
-
-        V, v_g = self.image_enc( images )
-
-        u = 1
-        states = None
-        # TODO: WIll list affect placement on GPU?
-        sentences = []
-
-        # loop through sentence decoder until u > 0.5
-        while (u > 0.5):
-            u, t, states = self.sentence_dec(v_g, states)
-            scores, states, atten_weights, beta = self.word_dec(V, v_g, t)
-            predicted = scores.max( 2 )[ 1 ] # argmax
-            sentences.append(predicted)
-
-        sentences = torch.cat( sentences, dim=1 )
-        return sentences
+        return scores.permute(0, 2, 1)[:, :, :report.size(1)]
 
 if __name__ == '__main__':
     from torchsummary import summary
