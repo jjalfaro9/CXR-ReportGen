@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as LS
-import pickle
 import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
@@ -64,7 +63,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     val_interval = int(len(train_loader))
 
     for epoch in range(train_params['epochs']):
-        print('== Epoch:', epoch)
+        print('=' * epoch,' Epoch:', epoch)
         epoch_loss = 0
         train_loss = 0
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(train_loader)):
@@ -96,10 +95,9 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 if sentence_idx == 0 or teach_enforce_ratio > 1 - teach_enforce_ratio:
                     word_input = reports[:, sentence_idx, : ]
                 else:
-                    word_input = prev_guessed
+                    word_input = torch.tensor([args.vocabulary['<start>']]).unsqueeze(0).to(args.device)
 
                 scores = word_dec(img_features, img_avg_features, topic, word_input)
-                prev_guessed = torch.argmax(scores, dim=1)
 
                 golden_words = reports[:, sentence_idx, :]
                 word_mask = (golden_words >= 1).float()
@@ -137,12 +135,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 def test(args, test_loader, word_vectors):
     img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
 
-    if args.use_sample:
-        vocabulary = pickle.load(open('sample_idxr-obj', 'rb'))
-    else:
-        vocabulary = pickle.load(open('full_idxr-obj', 'rb'))
-
-    inv_vocab = {v: k for k, v in vocabulary.items()}
+    inv_vocab = {v: k for k, v in args.vocabulary.items()}
 
     model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
     img_enc.load_state_dict(model_dict['encoder_state_dict'])
@@ -172,7 +165,7 @@ def test(args, test_loader, word_vectors):
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
 
-                word_input = torch.tensor([vocabulary['<start>']]).unsqueeze(0).to(args.device)
+                word_input = torch.tensor([args.vocabulary['<start>']]).unsqueeze(0).to(args.device)
                 sentence = [word_input.item()]
 
                 scores = word_dec(img_features, img_avg_features, topic, word_input)
