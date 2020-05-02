@@ -59,6 +59,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 
     best_loss = float('inf')
     writer = SummaryWriter('log/{}'.format(args.model_name))
+    batch_size = args.batch_size
     log_interval = int(len(train_loader) * 0.5)
     val_interval = int(len(train_loader))
 
@@ -66,7 +67,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
         print('== Epoch:', epoch)
         epoch_loss = 0
         train_loss = 0
-        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in tqdm.tqdm(enumerate(train_loader)):
+        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(train_loader)):
             img_enc.train()
             sentence_dec.train()
             word_dec.train()
@@ -91,8 +92,8 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
 
-                teach_enforce_ratio = args.teacher_forcing_const ** epoch
-                if teach_enforce_ratio > 1 - teach_enforce_ratio:
+                teach_enforce_ratio = args.teacher_forcing_const ** (epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item())
+                if sentence_idx == 0 or teach_enforce_ratio > 1 - teach_enforce_ratio:
                     word_input = reports[:, sentence_idx, : ]
                 else:
                     word_input = prev_guessed
@@ -123,7 +124,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
                 writer.add_scalar('train_loss', train_loss.item(), idx)
                 writer.add_scalar('word_loss', word_loss.item(), idx)
-                writer.add_scalar('sen_loss', sen_loss.item(), idx)
+                writer.add_scalar('sen_loss', sentence_loss.item(), idx)
 
         save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss / len(train_loader)
@@ -133,7 +134,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 
     writer.close()
 
-def test(train_params, args, test_loader, word_vectors):
+def test(args, test_loader, word_vectors):
     img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
 
     if args.use_sample:
@@ -148,7 +149,7 @@ def test(train_params, args, test_loader, word_vectors):
     sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
     word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
 
-    for batch_idx, (images, reports, num_sentences, word_lengths, prob) in tqdm.tqdm(enumerate(test_loader)):
+    for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(test_loader)):
         img_enc.eval()
         sentence_dec.eval()
         word_dec.eval()
@@ -178,7 +179,7 @@ def test(train_params, args, test_loader, word_vectors):
                 for w in word_input:
                     sentence.append(w.item())
                 pred[0].append(sentence)
-                generate = (stop > 0.5).squeeze(1).item() == 1
+                generate = (stop > 0.5).squeeze(1)[1] == 1
                 if generate and sentence_idx >= num_sentences[0] - 1:
                     print('dang it, we just dont know how to stop🛑✋🤔')
                     break

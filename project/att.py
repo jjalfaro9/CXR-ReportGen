@@ -10,7 +10,7 @@ class VisualSentinel(nn.Module):
         self.Wh = nn.Linear(hidden, hidden, bias=False)
         self.__initWeightss()
 
-    def __initWeightss():
+    def __initWeightss(self):
         init.kaiming_uniform_(self.Wx.weight, mode='fan_in')
         init.kaiming_uniform_(self.Wh.weight, mode='fan_in')
 
@@ -29,7 +29,7 @@ class Attention(nn.Module):
         self.Ws = nn.Linear(hidden_size, K, bias=False)
         self.__initWeightss()
 
-    def __initWeightss():
+    def __initWeightss(self):
         init.kaiming_uniform_(self.Wv.weight, mode='fan_in')
         init.kaiming_uniform_(self.Wg.weight, mode='fan_in')
         init.kaiming_uniform_(self.Wh.weight, mode='fan_in')
@@ -61,7 +61,7 @@ class AdaptiveAttention(nn.Module):
         self.mlp = nn.Linear(hidden, vocab_size)
         self.__initWeightss()
 
-    def __initWeightss():
+    def __initWeightss(self):
         init.kaiming_uniform_(self.mlp.weight, mode='fan_in')
 
     def forward(self, x, V):

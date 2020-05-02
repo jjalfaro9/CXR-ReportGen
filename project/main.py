@@ -40,7 +40,10 @@ if __name__ == '__main__':
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
-    parser.set_defaults(parallel=False)
+    test_parser = parser.add_mutually_exclusive_group(required=False)
+    test_parser.add_argument('--test', dest='test', action='store_true')
+    test_parser.add_argument('--no-test', dest='test', action='store_false')
+    parser.set_defaults(parallel=False,test=False)
     args = parser.parse_args()
 
     if torch.cuda.is_available():
@@ -72,5 +75,7 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
 
 
-    train(train_params, args, train_loader, test_loader, word_vectors)
-    # test(train_params, args, test_loader, word_vectors)
+    if not args.test:
+        train(train_params, args, train_loader, test_loader, word_vectors)
+    else:
+        test(args, test_loader, word_vectors)
