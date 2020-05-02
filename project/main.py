@@ -32,8 +32,11 @@ if __name__ == '__main__':
     parser.add_argument('--use_sample', type=bool, default=False)
     parser.add_argument('--continue_training', type=bool, default=False)
     parser.add_argument('--img_size', type=int, default=256)
-    parser.add_argument('--word_vecs_path', type=str, default='glove256_vocab.kv', help='path to word vectors file')
+    parser.add_argument('--word_vecs_path', type=str, default='glove256_vocab_full.kv', help='path to word vectors file')
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--teacher_forcing_const', type=float, default=.99)
+    parser.add_argument('--lambda_sent', type=float, default=5.0)
+    parser.add_argument('--lambda_word', type=float, default=1.0)
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
@@ -70,4 +73,4 @@ if __name__ == '__main__':
 
 
     train(train_params, args, train_loader, test_loader, word_vectors)
-    # test(train_params, args, test_loader)
+    # test(train_params, args, test_loader, word_vectors)
