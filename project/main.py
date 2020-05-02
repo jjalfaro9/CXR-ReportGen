@@ -70,6 +70,7 @@ if __name__ == '__main__':
     print("ARGUMENTS:", args, "\n")
     print("TRAIN PARAMS:", train_params, "\n")
 
+    args.vocabulary = train_dataset.vocabulary
     train_loader = DataLoader(train_dataset, batch_size=train_params['batch_size'],
                                 shuffle=False, collate_fn=collate_fn, num_workers=args.data_workers, pin_memory=args.pin_mem)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
