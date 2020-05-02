@@ -157,6 +157,11 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     print('Finished: Best L1 loss on val:{}'.format(best_loss))
 
 def test(train_params, args, test_loader):
+    if args.use_radiomics:
+        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
+        # adding a row for radiomics features
+        args.img_feature_size = args.img_feature_size + 1
+        
     img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
     sentence_dec = SentenceDecoder(args.vocab_size, args.hidden_size)
     word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size)
@@ -181,7 +186,7 @@ def test(train_params, args, test_loader):
     sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
     word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
 
-    for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(test_loader):
+    for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in enumerate(test_loader):
         img_enc.eval()
         sentence_dec.eval()
         word_dec.eval()
@@ -194,6 +199,10 @@ def test(train_params, args, test_loader):
 
 
         img_features, img_avg_features = img_enc(images)
+        if args.use_radiomics:
+            radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
+            img_features = torch.cat((img_features,radiomics_features), 1)
+            
         sentence_states = None
 
         pred_reports = [[]]
@@ -235,7 +244,7 @@ def get_image_radiomic_features(image_paths, dimensions, all_radiomic_features):
     radiomics_tensor = torch.Tensor(len(image_paths),1,dimensions)
     for i in range(len(image_paths)):
         path = image_paths[i]
-        r_features = all_radiomic_features[path[3:]]
+        r_features = all_radiomic_features.get(path[3:], [])
         r_features.extend([0 for i in range(dimensions - len(r_features))])
         temp = torch.Tensor(1,512)
         temp[0] = torch.Tensor(r_features)
