@@ -168,21 +168,23 @@ def test(args, test_loader, word_vectors):
             s_max = 8
             n_max = 18
             generate = True
+            sentence_idx = 0
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
 
                 word_input = torch.tensor([vocabulary['<start>']]).unsqueeze(0).to(args.device)
-                sentence = [word.item()]
+                sentence = [word_input.item()]
 
                 scores = word_dec(img_features, img_avg_features, topic, word_input)
                 word_input = torch.argmax(scores, dim=1)
                 for w in word_input:
                     sentence.append(w.item())
-                pred[0].append(sentence)
-                generate = (stop > 0.5).squeeze(1)[1] == 1
+                pred_reports[0].append(sentence)
+                generate = not (stop > 0.5).squeeze()[1].item()
                 if generate and sentence_idx >= num_sentences[0] - 1:
                     print('dang it, we just dont know how to stop🛑✋🤔')
                     break
+                sentence_idx += 1
 
 
             print("PRED:", [[inv_vocab[word_i] for word_i in sentence] for sentence in pred_reports[0]])
