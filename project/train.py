@@ -180,19 +180,21 @@ def test(args, test_loader, word_vectors):
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
                 word_input = torch.tensor(args.vocabulary['<start>']) \
+                                  .unsqueeze(0) \
                                   .to(args.device)
                 sentence = [word_input.item()]
-                z = torch.zeros(curr_batch_size, args.hidden_size) \
+                z = torch.zeros(1, args.hidden_size) \
                          .to(args.device)
                 wStates = (z, z)
                 word_idx = 0
+                make_words = True
                 while make_words:
                     scores, wStates = word_dec(img_features, img_avg_features, \
                                         topic, word_input, wStates)
                     word_input = torch.argmax(scores, dim=1)
-                    sentence.append(w.item())
+                    sentence.append(word_input.item())
                     make_words = sentence[-1] != args.vocabulary['end']
-                    if make_words and word_idx >= word_lengths[0][sentence_idx][word_idx]:
+                    if make_words and word_idx >= word_lengths[0][sentence_idx]:
                         print('dang it, we cant stop making words up 🗣')
                         break
                     word_idx += 1
