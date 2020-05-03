@@ -48,6 +48,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
     criterion = torch.nn.CrossEntropyLoss()
+    start_epochs = 0
 
     if args.continue_training:
         model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
@@ -55,6 +56,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
         sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
         word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
         optimizer.load_state_dict(model_dict['optimizer_state_dict'])
+        start_epochs = model_dict['epoch']
 
     best_loss = float('inf')
     writer = SummaryWriter('log/{}'.format(args.model_name))
@@ -62,7 +64,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     log_interval = int(len(train_loader) * 0.5)
     val_interval = int(len(train_loader))
 
-    for epoch in range(train_params['epochs']):
+    for epoch in range(start_epochs, train_params['epochs']):
         print('=' * epoch,' Epoch:', epoch)
         epoch_loss = 0
         train_loss = 0
@@ -100,8 +102,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
 
-                enforce = sentence_idx == 0 or \
-                          teach_enforce_ratio > 1 - teach_enforce_ratio
+                enforce = teach_enforce_ratio > 1 - teach_enforce_ratio
 
                 prev_out = torch.tensor(args.vocabulary['<start>']) \
                                   .expand(curr_batch_size) \
@@ -117,10 +118,12 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 
                     prev_out = torch.argmax(scores, dim=1)
 
-                    word_mask = (golden_words >= 1).float()
-                    w_l = criterion(scores, golden_words)
-                    w_l = w_l * word_mask
-                    word_loss += w_l.sum()
+                    masky_mask = (golden_words >= 1).long()
+                    golden_words = golden_words[masky_mask.nonzero()].squeeze(1)
+                    scores = scores[masky_mask.nonzero()].squeeze(1)
+                    if golden_words.nelement() > 0:
+                        w_l = criterion(scores, golden_words)
+                        word_loss += w_l
 
 
                 sen_stop = (num_sentences < sentence_idx).long()
@@ -132,7 +135,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 
             loss = args.lambda_sent * sentence_loss + args.lambda_word * word_loss
             optimizer.zero_grad()
-            loss.mean().backward()
+            loss.backward()
             optimizer.step()
             train_loss += loss.detach().cpu().numpy()
 
