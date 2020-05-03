@@ -92,9 +92,9 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             p = epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item()
             teach_enforce_ratio = args.teacher_forcing_const ** (p)
             curr_batch_size = len(num_sentences)
-            h_z = torch.zeros(1, args.hidden_size) \
+            h_z = torch.zeros(curr_batch_size, args.hidden_size) \
                          .to(args.device)
-            c_z = torch.zeros(1, args.hidden_size) \
+            c_z = torch.zeros(curr_batch_size, args.hidden_size) \
                      .to(args.device)
 
             while generate:
