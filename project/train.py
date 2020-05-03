@@ -92,7 +92,9 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             p = epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item()
             teach_enforce_ratio = args.teacher_forcing_const ** (p)
             curr_batch_size = len(num_sentences)
-            z = torch.zeros(curr_batch_size, args.hidden_size) \
+            h_z = torch.zeros(1, args.hidden_size) \
+                         .to(args.device)
+            c_z = torch.zeros(1, args.hidden_size) \
                      .to(args.device)
 
             while generate:
@@ -104,7 +106,8 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 prev_out = torch.tensor(args.vocabulary['<start>']) \
                                   .expand(curr_batch_size) \
                                   .to(args.device)
-                wStates = (z, z)
+                                  
+                wStates = (h_z, c_z)
                 for word_idx in range(reports.shape[2]):
                     golden_words = reports[:, sentence_idx, word_idx]
                     word_input = golden_words if enforce else prev_out
@@ -183,9 +186,11 @@ def test(args, test_loader, word_vectors):
                                   .unsqueeze(0) \
                                   .to(args.device)
                 sentence = [word_input.item()]
-                z = torch.zeros(1, args.hidden_size) \
+                h_z = torch.zeros(1, args.hidden_size) \
                          .to(args.device)
-                wStates = (z, z)
+                c_z = torch.zeros(1, args.hidden_size) \
+                         .to(args.device)
+                wStates = (h_z, c_z)
                 word_idx = 0
                 make_words = True
                 while make_words:
