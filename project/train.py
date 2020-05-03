@@ -88,22 +88,37 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                                  .to(args.device)
             generate = True
             sentence_idx = 0
+            # the random value is so that we can stop teacher forcing half way through epochs
+            p = epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item()
+            teach_enforce_ratio = args.teacher_forcing_const ** (p)
+            curr_batch_size = len(num_sentences)
+            z = torch.zeros(curr_batch_size, args.hidden_size) \
+                     .to(args.device)
+
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
 
-                teach_enforce_ratio = args.teacher_forcing_const ** (epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item())
-                if sentence_idx == 0 or teach_enforce_ratio > 1 - teach_enforce_ratio:
-                    word_input = reports[:, sentence_idx, : ]
-                else:
-                    word_input = torch.tensor([args.vocabulary['<start>']]).unsqueeze(0).to(args.device)
+                enforce = sentence_idx == 0 or \
+                          teach_enforce_ratio > 1 - teach_enforce_ratio
 
-                scores = word_dec(img_features, img_avg_features, topic, word_input)
+                prev_out = torch.tensor(args.vocabulary['<start>']) \
+                                  .expand(curr_batch_size) \
+                                  .to(args.device)
+                wStates = (z, z)
+                for word_idx in range(reports.shape[2]):
+                    golden_words = reports[:, sentence_idx, word_idx]
+                    word_input = golden_words if enforce else prev_out
 
-                golden_words = reports[:, sentence_idx, :]
-                word_mask = (golden_words >= 1).float()
-                w_l = criterion(scores, golden_words)
-                w_l = w_l * word_mask
-                word_loss += w_l.sum()
+                    scores, wStates = word_dec(img_features, img_avg_features, \
+                                                topic, word_input, wStates)
+
+                    prev_out = torch.argmax(scores, dim=1)
+
+                    word_mask = (golden_words >= 1).float()
+                    w_l = criterion(scores, golden_words)
+                    w_l = w_l * word_mask
+                    word_loss += w_l.sum()
+
 
                 sen_stop = (num_sentences < sentence_idx).long()
                 s_l = criterion(stop, sen_stop)
@@ -164,14 +179,23 @@ def test(args, test_loader, word_vectors):
             sentence_idx = 0
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
-
-                word_input = torch.tensor([args.vocabulary['<start>']]).unsqueeze(0).to(args.device)
+                word_input = torch.tensor(args.vocabulary['<start>']) \
+                                  .to(args.device)
                 sentence = [word_input.item()]
-
-                scores = word_dec(img_features, img_avg_features, topic, word_input)
-                word_input = torch.argmax(scores, dim=1)
-                for w in word_input:
+                z = torch.zeros(curr_batch_size, args.hidden_size) \
+                         .to(args.device)
+                wStates = (z, z)
+                word_idx = 0
+                while make_words:
+                    scores, wStates = word_dec(img_features, img_avg_features, \
+                                        topic, word_input, wStates)
+                    word_input = torch.argmax(scores, dim=1)
                     sentence.append(w.item())
+                    make_words = sentence[-1] != args.vocabulary['end']
+                    if make_words and word_idx >= word_lengths[0][sentence_idx][word_idx]:
+                        print('dang it, we cant stop making words up 🗣')
+                        break
+                    word_idx += 1
                 pred_reports[0].append(sentence)
                 generate = not (stop > 0.5).squeeze()[1].item()
                 if generate and sentence_idx >= num_sentences[0] - 1:

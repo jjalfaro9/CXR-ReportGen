@@ -56,25 +56,20 @@ class AdaptiveAttention(nn.Module):
         super(AdaptiveAttention, self).__init__()
         self.vocab_size = vocab_size
         self.hidden = hidden
-        self.atten = Attention(input, hidden, K)
-        self.lstmCell = nn.LSTMCell(input, hidden)
+        # The 3 is because we have [word_emb ; global_avg_feats; topic_vec ]
+        self.atten = Attention(3 * input, hidden, K)
+        self.lstmCell = nn.LSTMCell(3 * input, hidden)
         self.mlp = nn.Linear(hidden, vocab_size)
         self.__initWeightss()
 
     def __initWeightss(self):
         init.kaiming_uniform_(self.mlp.weight, mode='fan_in')
 
-    def forward(self, x, V):
-        # x = [wt; vg; topic_vec] => batch x seq_len x 256
+    def forward(self, x, V, state):
+        # x = [wt; vg; topic_vec] => batch x 256 * 3
         # V = batch x 64 x 512
-        scores = torch.zeros(x.size(0), x.size(1), self.vocab_size).to(x.device)
-        h_t = torch.zeros(x.size(0), self.hidden).to(x.device)
-        mem_t = torch.zeros(x.size(0), self.hidden).to(x.device)
-        for time_step in range(x.size(1)):
-            x_t = x[:, time_step, :]
-            h_t_prev = h_t
-            h_t, mem_t = self.lstmCell(x_t, (h_t, mem_t))
-            c_t = self.atten(V, h_t, mem_t, h_t_prev, x_t)
-            y_t = self.mlp(c_t + h_t)
-            scores[:, time_step, :] = y_t
-        return scores
+        h_t_prev = state[0]
+        h_t, mem_t = self.lstmCell(x, state)
+        c_t = self.atten(V, h_t, mem_t, h_t_prev, x)
+        scores = self.mlp(c_t + h_t)
+        return scores, (h_t, mem_t)

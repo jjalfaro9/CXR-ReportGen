@@ -79,12 +79,11 @@ class WordDecoder(nn.Module):
         self.embedding = nn.Embedding.from_pretrained(wv, freeze=not self.training)
         self.adaptive = AdaptiveAttention(embedd_size, hidden_size, img_feature_size, vocab_size)
 
-    def forward(self, V, v_g, topic_vector, report):
+    def forward(self, V, v_g, topic_vector, report, state):
         embeddings = self.embedding(report)
-        x = torch.cat((embeddings, v_g.unsqueeze(1), topic_vector.unsqueeze(1)), dim=1)
-        scores = self.adaptive(x, V)
-
-        return scores.permute(0, 2, 1)[:, :, :report.size(1)]
+        x = torch.cat((embeddings, v_g, topic_vector), dim=1)
+        scores, state = self.adaptive(x, V, state)
+        return scores, state
 
 if __name__ == '__main__':
     from torchsummary import summary
