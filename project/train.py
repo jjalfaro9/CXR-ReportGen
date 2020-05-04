@@ -106,7 +106,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 h_z = torch.zeros(curr_batch_size, args.hidden_size) \
                          .to(args.device)
                 c_z = torch.zeros(curr_batch_size, args.hidden_size) \
-                         .to(args.device)                  
+                         .to(args.device)
                 wStates = (h_z, c_z)
                 for word_idx in range(1, reports.shape[2]):
                     golden_words = reports[:, sentence_idx, word_idx]
@@ -200,7 +200,7 @@ def test(args, test_loader, word_vectors):
                                         topic, word_input, wStates)
                     word_input = torch.argmax(scores, dim=1)
                     sentence.append(word_input.item())
-                    make_words = sentence[-1] != args.vocabulary['end']
+                    make_words = sentence[-1] != args.vocabulary['<end>']
                     if make_words and word_idx >= word_lengths[0][sentence_idx]:
                         print('dang it, we cant stop making words up 🗣')
                         break
