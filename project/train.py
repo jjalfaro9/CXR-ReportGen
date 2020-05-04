@@ -166,12 +166,12 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     writer.close()
 
 def test(args, test_loader, word_vectors):
-    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
-
     if args.use_radiomics:
         all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
         # adding a row for radiomics features
         args.img_feature_size = args.img_feature_size + 1
+    
+    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
   
     inv_vocab = {v: k for k, v in args.vocabulary.items()}
 
