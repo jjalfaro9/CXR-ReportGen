@@ -92,7 +92,6 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
             if args.use_radiomics:
                 radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
                 img_features = torch.cat((img_features,radiomics_features), 1)
-                print(img_features.size())
                 
             sentence_states = None
             sentence_loss = 0
