@@ -116,20 +116,18 @@ class CXRDataset(Dataset):
             pass
 
         num_sentences = len(target)
-        return (img, target, num_sentences, longest_sentence_length, img_path)
+        return (img, target, num_sentences, longest_sentence_length)
 
 def collate_fn(data):
-    pre_images, pre_captions, num_sentences, longest_sentence_length, pre_image_paths = zip(*data)
+    pre_images, pre_captions, num_sentences, longest_sentence_length = zip(*data)
     # remove empty image-caption pairs
     images = []
     captions = []
-    image_paths = []
     for i in range(len(pre_captions)):
         cap = pre_captions[i]
         if len(cap) > 0:
             images.append(pre_images[i])
             captions.append(pre_captions[i])
-            image_paths.append(pre_image_paths[i])
     num_sentences = [len(cap) for cap in captions]
 
     try:
@@ -155,7 +153,7 @@ def collate_fn(data):
     targets = torch.Tensor(targets).long()
     prob = torch.Tensor(prob)
 
-    return images, targets, num_sentences, word_lengths, prob, image_paths
+    return images, targets, num_sentences, word_lengths, prob
 
 
 def main():

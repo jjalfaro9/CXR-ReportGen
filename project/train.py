@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as LS
 import tqdm
-from csv import reader
 
 from torch.utils.tensorboard import SummaryWriter
 from models import ImageEncoder, SentenceDecoder, WordDecoder
@@ -34,11 +33,6 @@ def get_models(args, word_vectors):
     return img_enc, sentence_dec, word_dec
 
 def train(train_params, args, train_loader, val_loader, word_vectors):
-    if args.use_radiomics:
-        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
-        # adding a row for radiomics features
-        args.img_feature_size = args.img_feature_size + 1
-        
     img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
 
     # DETAILS BELOW MATCHING PAPER
@@ -74,9 +68,9 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
         print('=' * epoch,' Epoch:', epoch)
         epoch_loss = 0
         train_loss = 0
-        for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in tqdm.tqdm(enumerate(train_loader)):
+        for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(train_loader)):
             print(batch_idx)
-            
+
             img_enc.train()
             sentence_dec.train()
             word_dec.train()
@@ -89,11 +83,6 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
 
             img_features, img_avg_features = img_enc(images)
 
-            if args.use_radiomics:
-                radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
-                radiomics_features = radiomics_features.to(args.device)
-                img_features = torch.cat((img_features,radiomics_features), 1)
-                
             sentence_states = None
             sentence_loss = 0
             word_loss = 0
@@ -166,13 +155,8 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     writer.close()
 
 def test(args, test_loader, word_vectors):
-    if args.use_radiomics:
-        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
-        # adding a row for radiomics features
-        args.img_feature_size = args.img_feature_size + 1
-    
     img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
-  
+
     inv_vocab = {v: k for k, v in args.vocabulary.items()}
 
     model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
@@ -180,7 +164,7 @@ def test(args, test_loader, word_vectors):
     sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
     word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
 
-    for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in enumerate(test_loader):
+    for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(test_loader)):
         img_enc.eval()
         sentence_dec.eval()
         word_dec.eval()
@@ -192,11 +176,6 @@ def test(args, test_loader, word_vectors):
         reports = reports.to(args.device)
         with torch.no_grad():
             img_features, img_avg_features = img_enc(images)
-            if args.use_radiomics:
-                radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
-                radiomics_features = radiomics_features.to(args.device)
-                img_features = torch.cat((img_features,radiomics_features), 1)
-                
             sentence_states = None
 
             pred_reports = [[]]
@@ -237,27 +216,3 @@ def test(args, test_loader, word_vectors):
 
             print("PRED:", [[inv_vocab[word_i] for word_i in sentence] for sentence in pred_reports[0]])
             print("TRUE:", [[inv_vocab[word_i.item()] for word_i in sentence] for sentence in reports[0]])
-    
-            
-def get_all_radiomic_features(data_path):
-    with open(data_path, 'r') as read_obj:
-        # pass the file object to reader() to get the reader object
-        csv_reader = reader(read_obj)
-        # Pass reader object to list() to get a list of lists
-        rows = list(csv_reader)
-    images = [x[0] for x in rows[1:]]
-    values = [[float(y) for y in x[1:]] for x in rows[1:]]
-    features = dict(zip(images, values))
-    return features
-    
-    
-def get_image_radiomic_features(image_paths, dimensions, all_radiomic_features):
-    radiomics_tensor = torch.Tensor(len(image_paths),1,dimensions)
-    for i in range(len(image_paths)):
-        path = image_paths[i]
-        r_features = all_radiomic_features.get(path[3:], [])
-        r_features.extend([0 for i in range(dimensions - len(r_features))])
-        temp = torch.Tensor(1,512)
-        temp[0] = torch.Tensor(r_features)
-        radiomics_tensor[i] = temp
-    return radiomics_tensor

@@ -37,8 +37,6 @@ if __name__ == '__main__':
     parser.add_argument('--teacher_forcing_const', type=float, default=.99)
     parser.add_argument('--lambda_sent', type=float, default=5.0)
     parser.add_argument('--lambda_word', type=float, default=1.0)
-    parser.add_argument('--use_radiomics', type=bool, default=False)
-    parser.add_argument('--radiomics_path', type=str, default='../data/radiomics_features.csv')
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
