@@ -1,0 +1,14 @@
+                                 FINAL REPORT
+ INDICATION:  Fever.
+ 
+ COMPARISON:  Chest radiograph from ___.
+ 
+ FINDINGS:  There are minor bibasilar atelectatic changes, greater on the right
+ than the left.  Otherwise, the lungs are without a focal consolidation or
+ effusion.  There is no pneumothorax.  Right chest wall port appears stable
+ with catheter tip at the mid SVC.  Surgical clips are noted in the left chest
+ anteriorly.
+ 
+ IMPRESSION:  Bibasilar atelectasis, right greater than left. If clinical
+ suspicion for an acute infection is high, a dedicated chest CT is recommended
+ for further characterization.

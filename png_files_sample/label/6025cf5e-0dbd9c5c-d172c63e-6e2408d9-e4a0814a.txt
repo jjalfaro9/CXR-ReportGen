@@ -1,0 +1,11 @@
+                                 FINAL REPORT
+ INDICATION:  Evaluation of the patient with chest pain.
+ 
+ COMPARISON:  Chest radiograph from ___.
+ 
+ FINDINGS:  The lungs are hyperexpanded suggestive of chronic obstructive
+ pulmonary disease.  Otherwise, the lungs are clear with no evidence of focal
+ consolidation, effusion, or pneumothorax.  Cardiomediastinal silhouette is
+ normal.  No acute fractures are identified.
+ 
+ IMPRESSION:  No acute cardiopulmonary process.

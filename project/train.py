@@ -1,111 +1,263 @@
-import os
-import copy
-import json
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as LS
-from PIL import Image
-from torchvision import transforms
+import tqdm
+from csv import reader
+
 from torch.utils.tensorboard import SummaryWriter
-from torchvision.transforms import Resize, ToTensor
+from models import ImageEncoder, SentenceDecoder, WordDecoder
 
-from encoders import Encoder, Decoder
-from loss import cross_entropy_loss
-
-def save_models(args, encoder, decoder, epoch, optimizer, loss):
+def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
     path = "save/"
     torch.save({
             'epoch': epoch,
             'encoder_state_dict': encoder.state_dict(),
-            'decoder_state_dict': decoder.state_dict(),
+            'sentence_decoder_state_dict': sentence_decoder.state_dict(),
+            'word_decoder_state_dict': word_decoder.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss
-            }, path + args.encoder_name+".pth")
+            }, path + args.model_name+".pth")
 
-def train(train_params, args, train_loader, val_loader):
-    encoder = Encoder()
-    decoder = Decoder()
-    encoder = encoder.to(args.device)
-    decoder = decoder.to(args.device)
+def get_models(args, word_vectors):
+    img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
+    sentence_dec = SentenceDecoder(args.hidden_size)
+    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size, word_vectors)
+    if args.parallel:
+        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
+        sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
+        word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
+
+
+    img_enc.to(args.device)
+    sentence_dec.to(args.device)
+    word_dec.to(args.device)
+    return img_enc, sentence_dec, word_dec
+
+def train(train_params, args, train_loader, val_loader, word_vectors):
+    if args.use_radiomics:
+        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
+        # adding a row for radiomics features
+        args.img_feature_size = args.img_feature_size + 1
+        
+    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
 
     # DETAILS BELOW MATCHING PAPER
-    optimizer = torch.optim.Adam(list(encoder.parameters(), decoder.parameters()), lr=train_params['lr'])
+    if args.parallel:
+        params = list(img_enc.module.affine_a.parameters()) \
+                + list(img_enc.module.affine_b.parameters())
+    else:
+        params = list(img_enc.affine_a.parameters()) \
+                + list(img_enc.affine_b.parameters())
+    params = params + list (sentence_dec.parameters()) \
+            + list(word_dec.parameters())
+
+    optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
     criterion = torch.nn.CrossEntropyLoss()
+    start_epochs = 0
+
+    if args.continue_training:
+        model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
+        img_enc.load_state_dict(model_dict['encoder_state_dict'])
+        sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
+        word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
+        optimizer.load_state_dict(model_dict['optimizer_state_dict'])
+        start_epochs = model_dict['epoch']
 
     best_loss = float('inf')
-    best_encoder = None
-    full_patience = 10
-    patience = full_patience
-    batch_size = train_params['batch_size']
-    writer = SummaryWriter('log/{}'.format(args.encoder_name))
-    log_interval = int(len(train_loader) / batch_size * 0.5)
-    val_interval = int(len(train_loader) / batch_size)
-    print('log_interval:', log_interval, 'val_interval:', val_interval)
+    writer = SummaryWriter('log/{}'.format(args.model_name))
+    batch_size = args.batch_size
+    log_interval = int(len(train_loader) * 0.5)
+    val_interval = int(len(train_loader))
 
-    for epoch in range(train_params['epochs']):
-        print('== Epoch:', epoch)
+    for epoch in range(start_epochs, train_params['epochs']):
+        print('=' * epoch,' Epoch:', epoch)
         epoch_loss = 0
-        # TO-DO: Match sure to match DataLoader
-        for batch_idx, (img, description) in enumerate(train_loader):
-            img = img.to(args.device)
+        train_loss = 0
+        for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in tqdm.tqdm(enumerate(train_loader)):
+            print(batch_idx)
+            
+            img_enc.train()
+            sentence_dec.train()
+            word_dec.train()
 
-            enc_output = encoder(img)
-            dec_output = decoder(enc_output)
-            loss = criterion(dec_output, description)
+            if len(images) == 0:
+                continue
 
+            images = images.to(args.device)
+            reports = reports.to(args.device)
+
+            img_features, img_avg_features = img_enc(images)
+
+            if args.use_radiomics:
+                radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
+                radiomics_features = radiomics_features.to(args.device)
+                img_features = torch.cat((img_features,radiomics_features), 1)
+                
+            sentence_states = None
+            sentence_loss = 0
+            word_loss = 0
+
+            max_generation = max(num_sentences) - 1
+            num_sentences = torch.tensor(num_sentences) \
+                                 .to(args.device)
+            generate = True
+            sentence_idx = 0
+            # the random value is so that we can stop teacher forcing half way through epochs
+            p = epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item()
+            teach_enforce_ratio = args.teacher_forcing_const ** (p)
+            curr_batch_size = len(num_sentences)
+
+            while generate:
+                stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
+
+                enforce = teach_enforce_ratio > 1 - teach_enforce_ratio
+
+                prev_out = torch.tensor(args.vocabulary['<start>']) \
+                                  .expand(curr_batch_size) \
+                                  .to(args.device)
+                h_z = torch.zeros(curr_batch_size, args.hidden_size) \
+                         .to(args.device)
+                c_z = torch.zeros(curr_batch_size, args.hidden_size) \
+                         .to(args.device)
+                wStates = (h_z, c_z)
+                for word_idx in range(1, reports.shape[2]):
+                    golden_words = reports[:, sentence_idx, word_idx]
+                    word_input = reports[:, sentence_idx, word_idx-1] if enforce else prev_out
+
+                    scores, wStates = word_dec(img_features, img_avg_features, \
+                                                topic, word_input, wStates)
+
+                    prev_out = torch.argmax(scores, dim=1)
+
+                    masky_mask = (golden_words >= 1).long()
+                    golden_words = golden_words[masky_mask.nonzero()].squeeze(1)
+                    scores = scores[masky_mask.nonzero()].squeeze(1)
+                    if golden_words.nelement() > 0:
+                        w_l = criterion(scores, golden_words)
+                        word_loss += w_l
+
+
+                sen_stop = (num_sentences < sentence_idx).long()
+                s_l = criterion(stop, sen_stop)
+                sentence_loss += s_l
+
+                sentence_idx += 1
+                generate = sentence_idx < max_generation
+
+            loss = args.lambda_sent * sentence_loss + args.lambda_word * word_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            epoch_loss += loss
-
+            train_loss += loss.detach().cpu().numpy()
 
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
-                writer.add_scalar('loss', loss.item(), idx)
+                writer.add_scalar('train_loss', train_loss.item(), idx)
+                writer.add_scalar('word_loss', word_loss.item(), idx)
+                writer.add_scalar('sen_loss', sentence_loss.item(), idx)
 
-            if batch_idx % val_interval == 0 and train_params['validate']:
-                encoder.eval()
-                val_loss = 0
-                for batch_idx, (img, description) in enumerate(val_loader):
-                    img = img.to(args.device)
-                    enc_output = encoder(img)
-                    dec_output = decoder(enc_output)
-
-                    val_loss += criterion(dec_output, description).item()
-                writer.add_scalar('val_loss', val_loss / len(val_loader), idx)
-                writer.flush()
-
-                if best_loss > val_loss:
-                    best_loss = val_loss
-                    best_encoder = copy.deepcopy(encoder)
-                    best_decoder = copy.deepcopy(decoder)
-                    save_models(args,
-                        encoder,
-                        decoder
-                        epoch,
-                        optimizer,
-                        loss)
-                    print('Improved: current best_loss on val:{}'.format(best_loss))
-                    patience = full_patience
-                else:
-                    patience -= 1
-                    print('patience', patience)
-                    if patience == 0:
-                        save_models(args,
-                            encoder,
-                            decoder,
-                            epoch,
-                            optimizer,
-                            loss)
-                        print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
-                        writer.close()
-                        return
-            encoder.train()
+        save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
+        epoch_loss = train_loss / len(train_loader)
         print(f"epoch loss: {epoch_loss}")
         writer.add_scalar('epoch loss', epoch_loss, epoch)
         scheduler.step()
 
-    print('Finished: Best L1 loss on val:{}'.format(best_loss))
     writer.close()
+
+def test(args, test_loader, word_vectors):
+    if args.use_radiomics:
+        all_radiomic_features = get_all_radiomic_features(args.radiomics_path)
+        # adding a row for radiomics features
+        args.img_feature_size = args.img_feature_size + 1
+    
+    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
+  
+    inv_vocab = {v: k for k, v in args.vocabulary.items()}
+
+    model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
+    img_enc.load_state_dict(model_dict['encoder_state_dict'])
+    sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
+    word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
+
+    for batch_idx, (images, reports, num_sentences, word_lengths, prob, image_paths) in enumerate(test_loader):
+        img_enc.eval()
+        sentence_dec.eval()
+        word_dec.eval()
+
+        if len(images) == 0:
+            continue
+
+        images = images.to(args.device)
+        reports = reports.to(args.device)
+        with torch.no_grad():
+            img_features, img_avg_features = img_enc(images)
+            if args.use_radiomics:
+                radiomics_features = get_image_radiomic_features(image_paths, args.hidden_size, all_radiomic_features)
+                radiomics_features = radiomics_features.to(args.device)
+                img_features = torch.cat((img_features,radiomics_features), 1)
+                
+            sentence_states = None
+
+            pred_reports = [[]]
+            s_max = 8
+            n_max = 18
+            generate = True
+            sentence_idx = 0
+            while generate:
+                stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
+                word_input = torch.tensor(args.vocabulary['<start>']) \
+                                  .unsqueeze(0) \
+                                  .to(args.device)
+                sentence = [word_input.item()]
+                h_z = torch.zeros(1, args.hidden_size) \
+                         .to(args.device)
+                c_z = torch.zeros(1, args.hidden_size) \
+                         .to(args.device)
+                wStates = (h_z, c_z)
+                word_idx = 0
+                make_words = True
+                while make_words:
+                    scores, wStates = word_dec(img_features, img_avg_features, \
+                                        topic, word_input, wStates)
+                    word_input = torch.argmax(scores, dim=1)
+                    sentence.append(word_input.item())
+                    make_words = sentence[-1] != args.vocabulary['<end>']
+                    if make_words and word_idx >= word_lengths[0][sentence_idx]:
+                        print('dang it, we cant stop making words up 🗣')
+                        break
+                    word_idx += 1
+                pred_reports[0].append(sentence)
+                generate = not (stop > 0.5).squeeze()[1].item()
+                if generate and sentence_idx >= num_sentences[0] - 1:
+                    print('dang it, we just dont know how to stop🛑✋🤔')
+                    break
+                sentence_idx += 1
+
+
+            print("PRED:", [[inv_vocab[word_i] for word_i in sentence] for sentence in pred_reports[0]])
+            print("TRUE:", [[inv_vocab[word_i.item()] for word_i in sentence] for sentence in reports[0]])
+    
+            
+def get_all_radiomic_features(data_path):
+    with open(data_path, 'r') as read_obj:
+        # pass the file object to reader() to get the reader object
+        csv_reader = reader(read_obj)
+        # Pass reader object to list() to get a list of lists
+        rows = list(csv_reader)
+    images = [x[0] for x in rows[1:]]
+    values = [[float(y) for y in x[1:]] for x in rows[1:]]
+    features = dict(zip(images, values))
+    return features
+    
+    
+def get_image_radiomic_features(image_paths, dimensions, all_radiomic_features):
+    radiomics_tensor = torch.Tensor(len(image_paths),1,dimensions)
+    for i in range(len(image_paths)):
+        path = image_paths[i]
+        r_features = all_radiomic_features.get(path[3:], [])
+        r_features.extend([0 for i in range(dimensions - len(r_features))])
+        temp = torch.Tensor(1,512)
+        temp[0] = torch.Tensor(r_features)
+        radiomics_tensor[i] = temp
+    return radiomics_tensor

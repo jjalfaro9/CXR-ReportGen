@@ -1,0 +1,15 @@
+                                 FINAL REPORT
+ INDICATION:  Dyspnea.  Evaluate for pneumonia.
+ 
+ COMPARISON:  Chest radiograph from ___.
+ 
+ TECHNIQUE:  PA and lateral views of the chest were obtained.
+ 
+ FINDINGS:  In comparison to the prior exam, the lung volumes are lower.  There
+ is minimal streaky linear opacification at the left base, most consistent with
+ atelectasis.  There is no evidence of pneumonia, pulmonary edema, pleural
+ effusion, or pneumothorax.  A stable vague opacity at the right cardiophrenic
+ sulcus is unchanged, likely mediastinal fat.  The cardiomediastinal silhouette
+ is otherwise normal.  
+ 
+ IMPRESSION:  Minimal left basilar atelectasis.  No evidence of pneumonia.
