@@ -54,21 +54,28 @@ class CXRDataset(Dataset):
             return len(self.images)
 
     def __getitem__(self, idx):
+        image_to_tensor = transforms.Compose(self.transform)
         if self.use_sample:
             img_path = self.sample + 'img/' + self.files[idx] +'.png'
             report_path = self.sample + 'label/' + self.files[idx] +'.txt'
 
-            image_to_tensor = transforms.Compose(self.transform)
             img = image_to_tensor(Image.open(img_path).convert('RGB'))
         else:
             img_path = self.images[idx]
             report_path = self.reports[idx]
 
-            ds = pydicom.read_file(img_path).pixel_array
+            with pydicom.read_file(img_path) as ds:
+                # convert to png from https://github.com/pydicom/pydicom/issues/352#issuecomment-406767850
+                # Convert to float to avoid overflow or underflow losses.
+                image_2d = ds.pixel_array.astype(float)
+                # Rescaling grey scale between 0-255
+                image_2d_scaled = (np.maximum(image_2d,0) / image_2d.max()) * 255.0
+                # Convert to uint
+                image_2d_scaled = np.uint8(image_2d_scaled)
 
-            # TODO: Don't convert to RGB
-            image_to_tensor = transforms.Compose(self.transform)
-            img = image_to_tensor(Image.fromarray(ds).convert('RGB'))
+            pilImg = Image.fromarray(image_2d_scaled)
+            img = image_to_tensor(pilImg)
+            img = torch.repeat(3, 1, 1) # per @rjrock
 
         target = []
         longest_sentence_length = 0
@@ -169,4 +176,3 @@ def main():
     print(len(train_dataset))
 
 # main()
-
