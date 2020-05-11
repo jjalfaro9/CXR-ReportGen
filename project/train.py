@@ -5,58 +5,23 @@ import tqdm
 import random
 
 from torch.utils.tensorboard import SummaryWriter
-from models import ImageEncoder, SentenceDecoder, WordDecoder
+from models import ModelFactory
 
-def save_models(args, encoder, sentence_decoder, word_decoder, epoch, optimizer, loss):
-    path = "save/"
-    torch.save({
-            'epoch': epoch,
-            'encoder_state_dict': encoder.state_dict(),
-            'sentence_decoder_state_dict': sentence_decoder.state_dict(),
-            'word_decoder_state_dict': word_decoder.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': loss
-            }, path + args.model_name+".pth")
-
-def get_models(args, word_vectors):
-    img_enc = ImageEncoder(args.embedd_size, args.hidden_size, args.img_size)
-    sentence_dec = SentenceDecoder(args.hidden_size)
-    word_dec = WordDecoder(args.vocab_size, args.hidden_size, args.img_feature_size, word_vectors)
-    if args.parallel:
-        img_enc = nn.DataParallel(img_enc, device_ids=args.gpus)
-        sentence_dec = nn.DataParallel(sentence_dec, device_ids=args.gpus)
-        word_dec = nn.DataParallel(word_dec, device_ids=args.gpus)
-
-
-    img_enc.to(args.device)
-    sentence_dec.to(args.device)
-    word_dec.to(args.device)
-    return img_enc, sentence_dec, word_dec
 
 def train(train_params, args, train_loader, val_loader, word_vectors):
-    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
+    mf = ModelFactory(args, word_vectors)
+
+    img_enc, sentence_dec, word_dec = mf.get_models()
 
     # DETAILS BELOW MATCHING PAPER
-    if args.parallel:
-        params = list(img_enc.module.affine_a.parameters()) \
-                + list(img_enc.module.affine_b.parameters())
-    else:
-        params = list(img_enc.affine_a.parameters()) \
-                + list(img_enc.affine_b.parameters())
-    params = params + list (sentence_dec.parameters()) \
-            + list(word_dec.parameters())
-
+    params = mf.get_params(img_enc, sentence_dec, word_dec)
     optimizer = torch.optim.Adam(params, lr=train_params['lr'])
     scheduler = LS.MultiStepLR(optimizer, milestones=[16, 32, 48, 64], gamma=0.5)
     criterion = torch.nn.CrossEntropyLoss()
     start_epochs = 0
 
     if args.continue_training:
-        model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
-        img_enc.load_state_dict(model_dict['encoder_state_dict'])
-        sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
-        word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
-        optimizer.load_state_dict(model_dict['optimizer_state_dict'])
+        mf.load_models(img_enc, sentence_dec, word_dec, optimizer)
         start_epochs = model_dict['epoch']
 
     best_loss = float('inf')
@@ -65,7 +30,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     log_interval = int(len(train_loader) * 0.5)
     val_interval = int(len(train_loader))
     prob_feed_sample = 0.0
-    prob_feed_sample_updates = set(16, 32, 48, 64)
+    prob_feed_sample_updates = set((16, 32, 48, 64))
 
     for epoch in range(start_epochs, train_params['epochs']):
         print('=' * epoch,' Epoch:', epoch)
@@ -74,7 +39,6 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
         if epoch + 1 in prob_feed_sample_updates:
             prob_feed_sample += 0.05
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(train_loader)):
-            print(batch_idx)
 
             img_enc.train()
             sentence_dec.train()
@@ -157,14 +121,12 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     writer.close()
 
 def test(args, test_loader, word_vectors):
-    img_enc, sentence_dec, word_dec = get_models(args, word_vectors)
+    mf = ModelFactory(args, word_vectors)
+    img_enc, sentence_dec, word_dec = mf.get_models()
 
     inv_vocab = {v: k for k, v in args.vocabulary.items()}
 
-    model_dict = torch.load('save/{model}.pth'.format(model=args.model_name), map_location=args.device)
-    img_enc.load_state_dict(model_dict['encoder_state_dict'])
-    sentence_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
-    word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
+    mf.load_models(img_enc, sentence_dec, word_dec)
 
     for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(test_loader)):
         img_enc.eval()

@@ -85,7 +85,60 @@ class WordDecoder(nn.Module):
         scores, state = self.adaptive(x, V, state)
         return scores, state
 
-if __name__ == '__main__':
-    from torchsummary import summary
-    imageEncoder = ImageEncoder(256, 64)
-    print(summary(imageEncoder, (3, 128, 128)))
+class ModelFactory:
+    def __init__(self, args, word_vectors):
+        self.args = args
+        self.word_vectors = word_vectors
+
+    def get_models(self):
+        img_enc = ImageEncoder(self.args.embedd_size, self.args.hidden_size, \
+                                self.args.img_size)
+        sentence_dec = SentenceDecoder(self.args.hidden_size)
+        word_dec = WordDecoder(self.args.vocab_size, self.args.hidden_size, \
+                                self.args.img_feature_size, self.word_vectors)
+        if self.args.parallel:
+            img_enc = nn.DataParallel(img_enc, device_ids=self.args.gpus)
+            sentence_dec = nn.DataParallel(sentence_dec, \
+                                device_ids=self.args.gpus)
+            word_dec = nn.DataParallel(word_dec, device_ids=self.args.gpus)
+
+
+        img_enc.to(self.args.device)
+        sentence_dec.to(self.args.device)
+        word_dec.to(self.args.device)
+        return img_enc, sentence_dec, word_dec
+
+    def save_models(self, encoder, sentence_decoder, word_decoder, epoch, \
+                    optimizer, loss):
+        path = "save/"
+        torch.save({
+                'epoch': epoch,
+                'encoder_state_dict': encoder.state_dict(),
+                'sentence_decoder_state_dict': sentence_decoder.state_dict(),
+                'word_decoder_state_dict': word_decoder.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': loss
+                }, path + self.args.model_name+".pth"
+        )
+
+    def get_params(self, img_enc, sen_dec, word_dec):
+        if self.args.parallel:
+            params = list(img_enc.module.affine_a.parameters()) \
+                    + list(img_enc.module.affine_b.parameters())
+        else:
+            params = list(img_enc.affine_a.parameters()) \
+                    + list(img_enc.affine_b.parameters())
+        params = params + list (sen_dec.parameters()) \
+                + list(word_dec.parameters())
+        return params
+
+    def load_models(self, img_enc, sen_dec, word_dec, optimizer=None):
+        model_dict = torch.load(\
+                        'save/{model}.pth'.format(model=self.args.model_name), \
+                        map_location=self.args.device
+                    )
+        img_enc.load_state_dict(model_dict['encoder_state_dict'])
+        sen_dec.load_state_dict(model_dict['sentence_decoder_state_dict'])
+        word_dec.load_state_dict(model_dict['word_decoder_state_dict'])
+        if optimizer is not None:
+            optimizer.load_state_dict(model_dict['optimizer_state_dict'])
