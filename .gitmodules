@@ -1,0 +1,3 @@
+[submodule "project/cheXpert"]
+	path = project/cheXpert
+	url = git@github.com:jjalfaro9/chexpert-labeler.git
