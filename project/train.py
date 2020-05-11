@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as LS
 import tqdm
+import random
 
 from torch.utils.tensorboard import SummaryWriter
 from models import ImageEncoder, SentenceDecoder, WordDecoder
@@ -63,11 +64,15 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
     batch_size = args.batch_size
     log_interval = int(len(train_loader) * 0.5)
     val_interval = int(len(train_loader))
+    prob_feed_sample = 0.0
+    prob_feed_sample_updates = set(16, 32, 48, 64)
 
     for epoch in range(start_epochs, train_params['epochs']):
         print('=' * epoch,' Epoch:', epoch)
         epoch_loss = 0
         train_loss = 0
+        if epoch + 1 in prob_feed_sample_updates:
+            prob_feed_sample += 0.05
         for batch_idx, (images, reports, num_sentences, word_lengths, prob) in enumerate(tqdm.tqdm(train_loader)):
             print(batch_idx)
 
@@ -92,15 +97,11 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                                  .to(args.device)
             generate = True
             sentence_idx = 0
-            # the random value is so that we can stop teacher forcing half way through epochs
-            p = epoch + torch.LongTensor(1).random_(0, train_params['epochs'] // 2).item()
-            teach_enforce_ratio = args.teacher_forcing_const ** (p)
+
             curr_batch_size = len(num_sentences)
 
             while generate:
                 stop, topic, sentence_states = sentence_dec(img_avg_features, sentence_states)
-
-                enforce = teach_enforce_ratio > 1 - teach_enforce_ratio
 
                 prev_out = torch.tensor(args.vocabulary['<start>']) \
                                   .expand(curr_batch_size) \
@@ -112,6 +113,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 wStates = (h_z, c_z)
                 for word_idx in range(1, reports.shape[2]):
                     golden_words = reports[:, sentence_idx, word_idx]
+                    enforce = False if random.random() < prob_feed_sample else True
                     word_input = reports[:, sentence_idx, word_idx-1] if enforce else prev_out
 
                     scores, wStates = word_dec(img_features, img_avg_features, \
