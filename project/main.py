@@ -8,7 +8,8 @@ import torchvision.transforms as transforms
 from torchvision.transforms import Resize, ToTensor
 from gensim.models import KeyedVectors
 
-from train import train, test
+from train import train
+from eval import eval
 from data import CXRDataset, collate_fn
 
 if __name__ == '__main__':
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--teacher_forcing_const', type=float, default=.99)
     parser.add_argument('--lambda_sent', type=float, default=5.0)
     parser.add_argument('--lambda_word', type=float, default=1.0)
+    parser.add_argument('--beam_size', type=int, default=4)
     parallel_parser = parser.add_mutually_exclusive_group(required=False)
     parallel_parser.add_argument('--parallel', dest='parallel', action='store_true')
     parallel_parser.add_argument('--no-parallel', dest='parallel', action='store_false')
@@ -79,4 +81,4 @@ if __name__ == '__main__':
     if not args.test:
         train(train_params, args, train_loader, test_loader, word_vectors)
     else:
-        test(args, test_loader, word_vectors)
+        eval(args, test_loader, word_vectors)
