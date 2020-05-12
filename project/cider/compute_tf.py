@@ -1,12 +1,11 @@
 # Given the imgs, reports we will calculate the term frequencies of our dataset
 # Which will be used later :D
 
-# This will compute the needed dictionaries and pickle them!
-# You can do it here in this directory!
 import pickle
 
-from torch.utils.data import DataLoader
-from typing import List, Dict
+from collections import defaultdict
+
+from typing import List, DefaultDict
 
 from arg_parser import ArgParser
 from data import CXRReports
@@ -16,20 +15,20 @@ from cider_scorer import cook_refs
 class TermFrequency:
     def __init__(self, args: 'argparse.Namespace'):
         self.document_frequency = defaultdict(float)
-        data = CXRReports(args.data)
-        self.loader = DataLoader(data, batch_size=1, shuffle=False)
-        self.ref_len = len(self.loader)
+        self.data = CXRReports(args.data)
+        self.ref_len = len(self.data)
         self.output_path = args.output_path
 
     def compute(self):
-        for words in tqdm(self.loader):
+        for words in tqdm(self.data):
+            if len(words) == 0:
+                continue
             crefs = cook_refs(words)
             self._compute_word_freq(crefs)
 
-    def _compute_word_freq(self, crefs: List[Dict]):
-        for refs in crefs:
-            for ngram in set([ngram for ref in refs for (ngram,count) in ref.iteritems()]):
-                self.document_frequency[ngram] += 1
+    def _compute_word_freq(self, crefs: List[DefaultDict]):
+        for ngram in set([ngram for ref in crefs for (ngram, count) in ref.items()]):
+            self.document_frequency[ngram] += 1
 
     def save(self):
         data = {

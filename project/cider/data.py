@@ -1,24 +1,31 @@
-from torch.utils.data import Dataset
+import re
 
-class CXRReports(Dataset):
+class CXRReports:
     def __init__(self, path):
         self.data_path = path
         self.reports = []
+        self.idx = 0
 
         for line in open(self.data_path+'_reports.txt'):
             self.reports.append(line.strip())
 
+    def __iter__(self):
+        return self
+
     def __len__(self):
         return len(self.reports)
 
-    def __getitem__(self, idx):
-        report = self.reports[idx]
+    def __next__(self):
+        if self.idx >= len(self.reports):
+            raise StopIteration
+        report = self.reports[self.idx]
         findings = get_report_findings(report)
         words = []
         for finding in findings:
             tokens = finding.lower().replace('.', '').replace(',', '').split()
             for word in tokens:
                 words.append(word)
+        self.idx += 1
         return words
 
 

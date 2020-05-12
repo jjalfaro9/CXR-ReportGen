@@ -10,8 +10,6 @@ from typing import List, AnyStr, DefaultDict
 import pickle
 
 import numpy as np
-from six.moves import xrange as range
-import six
 
 def precook(s: AnyStr, n=4, out=False) -> DefaultDict:
     """
@@ -57,7 +55,7 @@ class CiderScorer:
         with open(docTf, 'rb') as f:
             data = pickle.load(f)
             self.document_frequency = data['document_frequency']
-            self.ref_len = data['ref_len']
+            self.ref_len = np.log(float(data['ref_len']))
 
     def counts2vec(self, cnts):
         """
@@ -70,7 +68,7 @@ class CiderScorer:
         vec = [defaultdict(float) for _ in range(self.n)]
         length = 0
         norm = [0.0 for _ in range(self.n)]
-        for (ngram,term_freq) in six.iteritems(cnts):
+        for (ngram,term_freq) in cnts.items():
             # give word count 1 if it doesn't appear in reference corpus
             df = np.log(max(1.0, self.document_frequency[ngram]))
             # ngram index
@@ -101,7 +99,7 @@ class CiderScorer:
         val = np.array([0.0 for _ in range(self.n)])
         for n in range(self.n):
             # ngram
-            for (ngram,count) in six.iteritems(vec_hyp[n]):
+            for (ngram,count) in vec_hyp[n].items():
                 # vrama91 : added clipping
                 val[n] += min(vec_hyp[n][ngram], vec_ref[n][ngram]) * vec_ref[n][ngram]
 
