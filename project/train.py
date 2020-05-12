@@ -112,7 +112,7 @@ def train(train_params, args, train_loader, val_loader, word_vectors):
                 writer.add_scalar('word_loss', word_loss.item(), idx)
                 writer.add_scalar('sen_loss', sentence_loss.item(), idx)
 
-        save_models(args, img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
+        mf.save_models(img_enc, sentence_dec, word_dec, epoch, optimizer, train_loss)
         epoch_loss = train_loss / len(train_loader)
         print(f"epoch loss: {epoch_loss}")
         writer.add_scalar('epoch loss', epoch_loss, epoch)

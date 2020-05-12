@@ -75,7 +75,7 @@ class CXRDataset(Dataset):
 
             pilImg = Image.fromarray(image_2d_scaled)
             img = image_to_tensor(pilImg)
-            img = torch.repeat(3, 1, 1) # per @rjrock
+            img = img.repeat(3, 1, 1) # per @rjrock
 
         target = []
         longest_sentence_length = 0
